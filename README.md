@@ -11,6 +11,10 @@ A writer for the GTFS structure created by the [go gtfsparser](https://github.co
     w := gtfswriter.Writer{}
     werror := w.Write(feed, "/path/to/output")
 
+## Features
+
+Optional fields are not outputted if empty, if default values are used, the writer outputs them empty.
+
 ## Known restrictions
 
 Direct output to ZIP files not supported at the moment.
