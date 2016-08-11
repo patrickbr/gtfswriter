@@ -1,6 +1,6 @@
 # go gtfswriter
 
-A writer for the GTFS structure created by the [go gtfsparser](https://github.com/patrickbr/gtfsparser). This can be used to write feeds that have been changed programmatically back to a file.
+A writer for the GTFS structure created by the [go gtfsparser](https://github.com/patrickbr/gtfsparser). This can be used to write feeds that have been changed programmatically back to a GTFS feed.
 
 ## Usage
     feed := gtfsparser.NewFeed()
@@ -11,7 +11,7 @@ A writer for the GTFS structure created by the [go gtfsparser](https://github.co
     w := gtfswriter.Writer{}
     werror := w.Write(feed, "/path/to/output")
 
-## *Known restrictions
+## Known restrictions
 
 Direct output to ZIP files not supported at the moment.
 
