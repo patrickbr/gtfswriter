@@ -517,6 +517,10 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 }
 
 func dateToString(date gtfs.Date) string {
+	if date.Year == 0 && date.Month == 0 && date.Day == 0 {
+		// null value
+		return ""
+	}
 	return fmt.Sprintf("%d%02d%02d", date.Year, date.Month, date.Day)
 }
 
