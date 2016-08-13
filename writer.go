@@ -201,7 +201,7 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 	for _, v := range feed.Shapes {
 		for _, vp := range v.Points {
 			dist_trav := ""
-			if vp.Dist_traveled > -.5 {
+			if vp.HasDistanceTraveled() {
 				dist_trav = strconv.FormatFloat(float64(vp.Dist_traveled), 'f', -1, 32)
 			}
 			csvwriter.WriteCsvLine([]string{v.Id, strconv.FormatFloat(float64(vp.Lat), 'f', -1, 32), strconv.FormatFloat(float64(vp.Lon), 'f', -1, 32), intToString(vp.Sequence), dist_trav})
@@ -366,7 +366,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 	for _, v := range feed.Trips {
 		for _, st := range v.StopTimes {
 			dist_trav := ""
-			if st.Shape_dist_traveled > -.5 {
+			if st.HasDistanceTraveled() {
 				dist_trav = strconv.FormatFloat(float64(st.Shape_dist_traveled), 'f', -1, 32)
 			}
 			puType := int(st.Pickup_type)
