@@ -116,6 +116,9 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err err
 }
 
 func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err error) {
+	if len(feed.FeedInfos) == 0 {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "feed_info.txt")
 
 	if e != nil {
@@ -167,11 +170,15 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		if locType == 0 {
 			locType = -1
 		}
+		wb := v.Wheelchair_boarding
+		if wb == 0 {
+			wb = -1
+		}
 		parentStId := ""
 		if v.Parent_station != nil {
 			parentStId = v.Parent_station.Id
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, v.Code, v.Name, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), v.Zone_id, v.Url, intToString(locType), parentStId, v.Timezone, intToString(v.Wheelchair_boarding)})
+		csvwriter.WriteCsvLine([]string{v.Id, v.Code, v.Name, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), v.Zone_id, v.Url, intToString(locType), parentStId, v.Timezone, intToString(wb)})
 	}
 
 	csvwriter.Flush()
@@ -180,6 +187,9 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 }
 
 func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error) {
+	if len(feed.Shapes) == 0 {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "shapes.txt")
 
 	if e != nil {
@@ -233,11 +243,20 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 		[]string{"route_id", "route_short_name", "route_long_name", "route_type"})
 
 	for _, v := range feed.Routes {
-		if v.Agency == nil {
-			csvwriter.WriteCsvLine([]string{v.Id, "", v.Short_name, v.Long_name, v.Desc, intToString(v.Type), v.Url, v.Color, v.Text_color})
-		} else {
-			csvwriter.WriteCsvLine([]string{v.Id, v.Agency.Id, v.Short_name, v.Long_name, v.Desc, intToString(v.Type), v.Url, v.Color, v.Text_color})
+		agency := ""
+		if v.Agency != nil {
+			agency = v.Agency.Id
 		}
+
+		color := v.Color
+		if color == "FFFFFF" {
+			color = ""
+		}
+		textColor := v.Text_color
+		if textColor == "000000" {
+			textColor = ""
+		}
+		csvwriter.WriteCsvLine([]string{v.Id, agency, v.Short_name, v.Long_name, v.Desc, intToString(v.Type), v.Url, color, textColor})
 	}
 
 	csvwriter.Flush()
@@ -246,6 +265,16 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 }
 
 func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err error) {
+	hasCalendarEntries := false
+	for _, v := range feed.Services {
+		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] {
+			hasCalendarEntries = true
+			break
+		}
+	}
+	if !hasCalendarEntries {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "calendar.txt")
 
 	if e != nil {
@@ -276,6 +305,16 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 }
 
 func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (err error) {
+	hasCalendarDatesEntries := false
+	for _, v := range feed.Services {
+		if len(v.Exceptions) > 0 {
+			hasCalendarDatesEntries = true
+			break
+		}
+	}
+	if !hasCalendarDatesEntries {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "calendar_dates.txt")
 
 	if e != nil {
@@ -391,6 +430,9 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 }
 
 func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (err error) {
+	if len(feed.FareAttributes) == 0 {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "fare_attributes.txt")
 
 	if e != nil {
@@ -419,6 +461,16 @@ func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (e
 }
 
 func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed) (err error) {
+	hasFareAttrRules := false
+	for _, v := range feed.FareAttributes {
+		if len(v.Rules) > 0 {
+			hasFareAttrRules = true
+			break
+		}
+	}
+	if !hasFareAttrRules {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "fare_rules.txt")
 
 	if e != nil {
@@ -452,6 +504,16 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 }
 
 func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err error) {
+	hasFrequencies := false
+	for _, v := range feed.Trips {
+		if len(v.Frequencies) > 0 {
+			hasFrequencies = true
+			break
+		}
+	}
+	if !hasFrequencies {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "frequencies.txt")
 
 	if e != nil {
@@ -485,6 +547,9 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 }
 
 func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err error) {
+	if len(feed.Transfers) == 0 {
+		return nil
+	}
 	file, e := writer.getFileForWriting(path, "transfers.txt")
 
 	if e != nil {
