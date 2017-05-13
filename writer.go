@@ -166,8 +166,9 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		[]string{"stop_id", "stop_name", "stop_lat", "stop_lon"})
 
 	for _, v := range feed.Stops {
-		locType := v.Location_type
-		if locType == 0 {
+		locTypeBool := v.Location_type
+		locType := 1
+		if !locTypeBool {
 			locType = -1
 		}
 		wb := v.Wheelchair_boarding
@@ -178,7 +179,7 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		if v.Parent_station != nil {
 			parentStId = v.Parent_station.Id
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, v.Code, v.Name, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), v.Zone_id, v.Url, intToString(locType), parentStId, v.Timezone, intToString(wb)})
+		csvwriter.WriteCsvLine([]string{v.Id, v.Code, v.Name, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), v.Zone_id, v.Url, intToString(locType), parentStId, v.Timezone, intToString(int(wb))})
 	}
 
 	csvwriter.Flush()
@@ -256,7 +257,7 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 		if textColor == "000000" {
 			textColor = ""
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, agency, v.Short_name, v.Long_name, v.Desc, intToString(v.Type), v.Url, color, textColor})
+		csvwriter.WriteCsvLine([]string{v.Id, agency, v.Short_name, v.Long_name, v.Desc, intToString(int(v.Type)), v.Url, color, textColor})
 	}
 
 	csvwriter.Flush()
