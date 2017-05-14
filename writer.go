@@ -107,7 +107,21 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err err
 		[]string{"agency_name", "agency_url", "agency_timezone"})
 
 	for _, v := range feed.Agencies {
-		csvwriter.WriteCsvLine([]string{v.Id, v.Name, v.Url, v.Timezone, v.Lang, v.Phone, v.Fare_url, v.Email})
+		fareurl := ""
+		if v.Fare_url != nil {
+			fareurl = v.Fare_url.String()
+		}
+
+		url := ""
+		if v.Url != nil {
+			url = v.Url.String()
+		}
+
+		email := ""
+		if v.Email != nil {
+			email = v.Email.Address
+		}
+		csvwriter.WriteCsvLine([]string{v.Id, v.Name, url, v.Timezone.GetTzString(), v.Lang.GetLangString(), v.Phone, fareurl, email})
 	}
 
 	csvwriter.Flush()
@@ -138,7 +152,11 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 		[]string{"feed_publisher_name", "feed_publisher_url", "feed_lang"})
 
 	for _, v := range feed.FeedInfos {
-		csvwriter.WriteCsvLine([]string{v.Publisher_name, v.Publisher_url, v.Lang, dateToString(v.Start_date), dateToString(v.End_date), v.Version})
+		puburl := ""
+		if v.Publisher_url != nil {
+			puburl = v.Publisher_url.String()
+		}
+		csvwriter.WriteCsvLine([]string{v.Publisher_name, puburl, v.Lang, dateToString(v.Start_date), dateToString(v.End_date), v.Version})
 	}
 
 	csvwriter.Flush()
@@ -179,7 +197,11 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		if v.Parent_station != nil {
 			parentStId = v.Parent_station.Id
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, v.Code, v.Name, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), v.Zone_id, v.Url, intToString(locType), parentStId, v.Timezone, intToString(int(wb))})
+		url := ""
+		if v.Url != nil {
+			url = v.Url.String()
+		}
+		csvwriter.WriteCsvLine([]string{v.Id, v.Code, v.Name, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), v.Zone_id, url, intToString(locType), parentStId, v.Timezone.GetTzString(), intToString(int(wb))})
 	}
 
 	csvwriter.Flush()
@@ -257,7 +279,11 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 		if textColor == "000000" {
 			textColor = ""
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, agency, v.Short_name, v.Long_name, v.Desc, intToString(int(v.Type)), v.Url, color, textColor})
+		url := ""
+		if v.Url != nil {
+			url = v.Url.String()
+		}
+		csvwriter.WriteCsvLine([]string{v.Id, agency, v.Short_name, v.Long_name, v.Desc, intToString(int(v.Type)), url, color, textColor})
 	}
 
 	csvwriter.Flush()
@@ -417,10 +443,14 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 			if doType == 0 {
 				doType = -1
 			}
-			if st.Timepoint {
-				csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""})
+			if st.Arrival_time.Empty() || st.Departure_time.Empty() {
+				csvwriter.WriteCsvLine([]string{v.Id, "", "", st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""})
 			} else {
-				csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, "0"})
+				if st.Timepoint {
+					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""})
+				} else {
+					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, "0"})
+				}
 			}
 		}
 	}
