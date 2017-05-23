@@ -17,7 +17,13 @@ Optional fields are not outputted if empty, if default values are used, the writ
 
 ## Known restrictions
 
-Direct output to ZIP files not supported at the moment.
+For direct output in ZIP file, you must create it before: 
+
+    // do stuff with feed
+    os.Create("/path/to/output.zip")
+    
+    w := gtfswriter.Writer{}
+    werror := w.Write(feed, "/path/to/output")
 
 ## License
 

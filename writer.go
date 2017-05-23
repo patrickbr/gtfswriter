@@ -15,10 +15,16 @@ import (
 	"os"
 	opath "path"
 	"strconv"
+	"archive/zip"
+	
 )
 
 type Writer struct {
+	//case write in Dir
 	curFileHandle *os.File
+	//case write in File
+	zipFile *zip.Writer
+	
 }
 
 func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
@@ -63,6 +69,13 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 		e = writer.writeTransfers(path, feed)
 	}
 
+	if writer.curFileHandle != nil {
+		writer.curFileHandle.Close()
+	}
+	if writer.zipFile != nil {
+		e= writer.zipFile.Close()
+	}
+
 	return e
 }
 
@@ -81,7 +94,16 @@ func (writer *Writer) getFileForWriting(path string, name string) (io.Writer, er
 
 		return os.Create(opath.Join(path, name))
 	} else {
-		return nil, errors.New("Output to file not yet supported.")
+		//Archive
+		if writer.zipFile==nil{
+			zipF,err := os.Create(path)
+			if err !=nil {
+				return nil,err
+			}
+		    writer.zipFile = zip.NewWriter(zipF)
+		}
+		return writer.zipFile.Create(name)
+		
 	}
 
 	return nil, errors.New("Could not open for writing.")
