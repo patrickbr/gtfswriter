@@ -7,6 +7,7 @@
 package gtfswriter
 
 import (
+	"archive/zip"
 	"errors"
 	"fmt"
 	"github.com/patrickbr/gtfsparser"
@@ -15,8 +16,6 @@ import (
 	"os"
 	opath "path"
 	"strconv"
-	"archive/zip"
-	
 )
 
 type Writer struct {
@@ -24,7 +23,6 @@ type Writer struct {
 	curFileHandle *os.File
 	//case write in File
 	zipFile *zip.Writer
-	
 }
 
 func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
@@ -73,7 +71,7 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 		writer.curFileHandle.Close()
 	}
 	if writer.zipFile != nil {
-		e= writer.zipFile.Close()
+		e = writer.zipFile.Close()
 	}
 
 	return e
@@ -95,15 +93,15 @@ func (writer *Writer) getFileForWriting(path string, name string) (io.Writer, er
 		return os.Create(opath.Join(path, name))
 	} else {
 		//Archive
-		if writer.zipFile==nil{
-			zipF,err := os.Create(path)
-			if err !=nil {
-				return nil,err
+		if writer.zipFile == nil {
+			zipF, err := os.Create(path)
+			if err != nil {
+				return nil, err
 			}
-		    writer.zipFile = zip.NewWriter(zipF)
+			writer.zipFile = zip.NewWriter(zipF)
 		}
 		return writer.zipFile.Create(name)
-		
+
 	}
 
 	return nil, errors.New("Could not open for writing.")
