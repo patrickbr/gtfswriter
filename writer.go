@@ -8,6 +8,7 @@ package gtfswriter
 
 import (
 	"archive/zip"
+	"compress/flate"
 	"errors"
 	"fmt"
 	"github.com/patrickbr/gtfsparser"
@@ -22,7 +23,8 @@ type Writer struct {
 	//case write in Dir
 	curFileHandle *os.File
 	//case write in File
-	zipFile *zip.Writer
+	zipFile             *zip.Writer
+	ZipCompressionLevel int
 }
 
 func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
@@ -99,6 +101,20 @@ func (writer *Writer) getFileForWriting(path string, name string) (io.Writer, er
 				return nil, err
 			}
 			writer.zipFile = zip.NewWriter(zipF)
+
+			if writer.ZipCompressionLevel == 0 {
+				writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+					return flate.NewWriter(out, flate.DefaultCompression)
+				})
+			} else if writer.ZipCompressionLevel == -1 {
+				writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+					return flate.NewWriter(out, flate.NoCompression)
+				})
+			} else if writer.ZipCompressionLevel > 0 {
+				writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+					return flate.NewWriter(out, writer.ZipCompressionLevel)
+				})
+			}
 		}
 		return writer.zipFile.Create(name)
 

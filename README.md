@@ -15,6 +15,17 @@ A writer for the GTFS structure created by the [go gtfsparser](https://github.co
 
 Optional fields are not outputted if empty, if default values are used, the writer outputs them empty.
 
+The ZIP compression level can be specified by setting `ZipCompressionLevel`:
+
+    w := gtfswriter.Writer{ZipCompressionLevel : 9}
+    werror := w.Write(feed, "/path/to/output")
+
+The following options are supported:
+
+* `0` (default): default compression
+* `1`-`9`: Compression levels from `1` (fastest) to `9` (best)
+* `-1`: no compression
+
 ## Known restrictions
 
 For direct output in ZIP file, you must create it before: 
