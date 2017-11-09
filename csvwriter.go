@@ -9,13 +9,34 @@ package gtfswriter
 import (
 	"encoding/csv"
 	"io"
+	"sort"
 )
+
+type Lines [][]string
+
+type SortedLines struct {
+	Lines     Lines
+	SortDepth int
+}
+
+func (l SortedLines) Len() int      { return len(l.Lines) }
+func (l SortedLines) Swap(i, j int) { l.Lines[i], l.Lines[j] = l.Lines[j], l.Lines[i] }
+func (l SortedLines) Less(i, j int) bool {
+	for a := 0; a < l.SortDepth && a < len(l.Lines[i]); a++ {
+		if l.Lines[i][a] < l.Lines[j][a] {
+			return true
+		} else if l.Lines[i][a] != l.Lines[j][a] {
+			return false
+		}
+	}
+	return false
+}
 
 type CsvWriter struct {
 	writer      *csv.Writer
 	headers     []string
 	headerUsage []bool
-	lines       [][]string
+	lines       Lines
 }
 
 func NewCsvWriter(file io.Writer) CsvWriter {
@@ -24,7 +45,7 @@ func NewCsvWriter(file io.Writer) CsvWriter {
 		writer:      writer,
 		headers:     make([]string, 0),
 		headerUsage: make([]bool, 0),
-		lines:       make([][]string, 0),
+		lines:       make(Lines, 0),
 	}
 
 	return p
@@ -52,6 +73,10 @@ func (p *CsvWriter) WriteCsvLine(val []string) {
 	}
 }
 
+func (p *CsvWriter) SortByCols(depth int) {
+	sort.Sort(SortedLines{p.lines, depth})
+}
+
 func (p *CsvWriter) Flush() {
 	if len(p.lines) == 0 {
 		return
@@ -76,6 +101,7 @@ func (p *CsvWriter) Flush() {
 		}
 	}
 	p.writer.Flush()
+	p.lines = nil
 }
 
 func (p *CsvWriter) maskLine(val *[]string) {

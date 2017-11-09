@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	opath "path"
+	"sort"
 	"strconv"
 )
 
@@ -25,6 +26,7 @@ type Writer struct {
 	//case write in File
 	zipFile             *zip.Writer
 	ZipCompressionLevel int
+	Sorted              bool
 }
 
 func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
@@ -160,6 +162,10 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err err
 		csvwriter.WriteCsvLine([]string{v.Id, v.Name, url, v.Timezone.GetTzString(), v.Lang.GetLangString(), v.Phone, fareurl, email})
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(1)
+	}
+
 	csvwriter.Flush()
 
 	return e
@@ -216,8 +222,8 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 	}()
 
 	// write header
-	csvwriter.SetHeader([]string{"stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon", "zone_id", "stop_url", "location_type", "parent_station", "stop_timezone", "wheelchair_boarding"},
-		[]string{"stop_id", "stop_name", "stop_lat", "stop_lon"})
+	csvwriter.SetHeader([]string{"stop_name", "parent_station", "stop_code", "zone_id", "stop_id", "stop_desc", "stop_lat", "stop_lon", "stop_url", "location_type", "stop_timezone", "wheelchair_boarding"},
+		[]string{"stop_name", "stop_id", "stop_lat", "stop_lon"})
 
 	for _, v := range feed.Stops {
 		locTypeBool := v.Location_type
@@ -237,9 +243,12 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		if v.Url != nil {
 			url = v.Url.String()
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, v.Code, v.Name, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), v.Zone_id, url, intToString(locType), parentStId, v.Timezone.GetTzString(), intToString(int(wb))})
+		csvwriter.WriteCsvLine([]string{v.Name, parentStId, v.Code, v.Zone_id, v.Id, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), url, intToString(locType), v.Timezone.GetTzString(), intToString(int(wb))})
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(12)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -264,8 +273,8 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 	}()
 
 	// write header
-	csvwriter.SetHeader([]string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence", "shape_dist_traveled"},
-		[]string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence"})
+	csvwriter.SetHeader([]string{"shape_id", "shape_pt_sequence", "shape_pt_lat", "shape_pt_lon", "shape_dist_traveled"},
+		[]string{"shape_id", "shape_pt_sequence", "shape_pt_lat", "shape_pt_lon"})
 
 	for _, v := range feed.Shapes {
 		for _, vp := range v.Points {
@@ -273,10 +282,13 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 			if vp.HasDistanceTraveled() {
 				dist_trav = strconv.FormatFloat(float64(vp.Dist_traveled), 'f', -1, 32)
 			}
-			csvwriter.WriteCsvLine([]string{v.Id, strconv.FormatFloat(float64(vp.Lat), 'f', -1, 32), strconv.FormatFloat(float64(vp.Lon), 'f', -1, 32), intToString(vp.Sequence), dist_trav})
+			csvwriter.WriteCsvLine([]string{v.Id, intToString(vp.Sequence), strconv.FormatFloat(float64(vp.Lat), 'f', -1, 32), strconv.FormatFloat(float64(vp.Lon), 'f', -1, 32), dist_trav})
 		}
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(2)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -298,8 +310,8 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 	}()
 
 	// write header
-	csvwriter.SetHeader([]string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_desc", "route_type", "route_url", "route_color", "route_text_color"},
-		[]string{"route_id", "route_short_name", "route_long_name", "route_type"})
+	csvwriter.SetHeader([]string{"route_long_name", "route_short_name", "agency_id", "route_desc", "route_type", "route_id", "route_url", "route_color", "route_text_color"},
+		[]string{"route_long_name", "route_short_name", "route_type", "route_id"})
 
 	for _, v := range feed.Routes {
 		agency := ""
@@ -319,9 +331,12 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 		if v.Url != nil {
 			url = v.Url.String()
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, agency, v.Short_name, v.Long_name, v.Desc, intToString(int(v.Type)), url, color, textColor})
+		csvwriter.WriteCsvLine([]string{v.Long_name, v.Short_name, agency, v.Desc, intToString(int(v.Type)), v.Id, url, color, textColor})
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(9)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -353,15 +368,18 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 	}()
 
 	// write header
-	csvwriter.SetHeader([]string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"},
-		[]string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"})
+	csvwriter.SetHeader([]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"},
+		[]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"})
 
 	for _, v := range feed.Services {
 		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] {
-			csvwriter.WriteCsvLine([]string{v.Id, boolToGtfsBool(v.Daymap[1]), boolToGtfsBool(v.Daymap[2]), boolToGtfsBool(v.Daymap[3]), boolToGtfsBool(v.Daymap[4]), boolToGtfsBool(v.Daymap[5]), boolToGtfsBool(v.Daymap[6]), boolToGtfsBool(v.Daymap[0]), dateToString(v.Start_date), dateToString(v.End_date)})
+			csvwriter.WriteCsvLine([]string{boolToGtfsBool(v.Daymap[1]), boolToGtfsBool(v.Daymap[2]), boolToGtfsBool(v.Daymap[3]), boolToGtfsBool(v.Daymap[4]), boolToGtfsBool(v.Daymap[5]), boolToGtfsBool(v.Daymap[6]), boolToGtfsBool(v.Daymap[0]), dateToString(v.Start_date), dateToString(v.End_date), v.Id})
 		}
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(10)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -393,14 +411,17 @@ func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (er
 	}()
 
 	// write header
-	csvwriter.SetHeader([]string{"service_id", "date", "exception_type"}, []string{"service_id", "date", "exception_type"})
+	csvwriter.SetHeader([]string{"service_id", "exception_type", "date"}, []string{"service_id", "exception_type", "date"})
 
 	for _, v := range feed.Services {
-		for _, e := range v.Exceptions {
-			csvwriter.WriteCsvLine([]string{v.Id, dateToString(e.Date), intToString(int(e.Type))})
+		for d, t := range v.Exceptions {
+			csvwriter.WriteCsvLine([]string{v.Id, intToString(int(t)), dateToString(d)})
 		}
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(3)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -422,7 +443,7 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed) (err error)
 	}()
 
 	// write header
-	csvwriter.SetHeader([]string{"route_id", "service_id", "trip_id", "trip_headsign", "trip_short_name", "direction_id", "block_id", "shape_id", "wheelchair_accessible", "bikes_allowed"},
+	csvwriter.SetHeader([]string{"route_id", "service_id", "trip_headsign", "trip_short_name", "direction_id", "block_id", "shape_id", "trip_id", "wheelchair_accessible", "bikes_allowed"},
 		[]string{"route_id", "service_id", "trip_id"})
 
 	for _, v := range feed.Trips {
@@ -435,15 +456,37 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed) (err error)
 			ba = -1
 		}
 		if v.Shape == nil {
-			csvwriter.WriteCsvLine([]string{v.Route.Id, v.Service.Id, v.Id, v.Headsign, v.Short_name, intToString(int(v.Direction_id)), v.Block_id, "", intToString(wa), intToString(ba)})
+			csvwriter.WriteCsvLine([]string{v.Route.Id, v.Service.Id, v.Headsign, v.Short_name, intToString(int(v.Direction_id)), v.Block_id, "", v.Id, intToString(wa), intToString(ba)})
 		} else {
-			csvwriter.WriteCsvLine([]string{v.Route.Id, v.Service.Id, v.Id, v.Headsign, v.Short_name, intToString(int(v.Direction_id)), v.Block_id, v.Shape.Id, intToString(wa), intToString(ba)})
+			csvwriter.WriteCsvLine([]string{v.Route.Id, v.Service.Id, v.Headsign, v.Short_name, intToString(int(v.Direction_id)), v.Block_id, v.Shape.Id, v.Id, intToString(wa), intToString(ba)})
 		}
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(10)
+	}
 	csvwriter.Flush()
 
 	return e
+}
+
+type TripLine struct {
+	Trip     *gtfs.Trip
+	Sequence int
+	Line     []string
+}
+
+type TripLines []TripLine
+
+func (tl TripLines) Len() int      { return len(tl) }
+func (tl TripLines) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
+func (tl TripLines) Less(i, j int) bool {
+	return tl[i].Trip.Route.Type < tl[j].Trip.Route.Type ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name < tl[j].Trip.Route.Long_name) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign < tl[j].Trip.Headsign) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id < tl[j].Trip.Route.Id) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id == tl[j].Trip.Route.Id && tl[i].Trip.Id < tl[j].Trip.Id) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id == tl[j].Trip.Route.Id && tl[i].Trip.Id == tl[j].Trip.Id && tl[i].Sequence < tl[j].Sequence)
 }
 
 func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err error) {
@@ -465,6 +508,8 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 	csvwriter.SetHeader([]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "stop_headsign", "pickup_type", "drop_off_type", "shape_dist_traveled", "timepoint"},
 		[]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"})
 
+	var lines TripLines
+
 	for _, v := range feed.Trips {
 		for _, st := range v.StopTimes {
 			dist_trav := ""
@@ -480,15 +525,23 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 				doType = -1
 			}
 			if st.Arrival_time.Empty() || st.Departure_time.Empty() {
-				csvwriter.WriteCsvLine([]string{v.Id, "", "", st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""})
+				lines = append(lines, TripLine{v, st.Sequence, []string{v.Id, "", "", st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""}})
 			} else {
 				if st.Timepoint {
-					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""})
+					lines = append(lines, TripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""}})
 				} else {
-					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, "0"})
+					lines = append(lines, TripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, "0"}})
 				}
 			}
 		}
+	}
+
+	if writer.Sorted {
+		sort.Sort(lines)
+	}
+
+	for _, v := range lines {
+		csvwriter.WriteCsvLine(v.Line)
 	}
 
 	csvwriter.Flush()
@@ -522,6 +575,9 @@ func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (e
 		csvwriter.WriteCsvLine([]string{v.Id, v.Price, v.Currency_type, intToString(v.Payment_method), intToString(v.Transfers), intToString(v.Transfer_duration)})
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(1)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -565,6 +621,9 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 		}
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(5)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -608,6 +667,9 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 		}
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(5)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -643,6 +705,9 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 		csvwriter.WriteCsvLine([]string{v.From_stop.Id, v.To_stop.Id, intToString(transferType), intToString(v.Min_transfer_time)})
 	}
 
+	if writer.Sorted {
+		csvwriter.SortByCols(4)
+	}
 	csvwriter.Flush()
 
 	return e
@@ -657,7 +722,7 @@ func dateToString(date gtfs.Date) string {
 }
 
 func timeToString(time gtfs.Time) string {
-	return fmt.Sprintf("%d:%02d:%02d", time.Hour, time.Minute, time.Second)
+	return fmt.Sprintf("%02d:%02d:%02d", time.Hour, time.Minute, time.Second)
 }
 
 func intToString(i int) string {
