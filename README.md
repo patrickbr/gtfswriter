@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/patrickbr/gtfswriter)](https://goreportcard.com/report/github.com/patrickbr/gtfswriter) [![Build Status](https://travis-ci.org/patrickbr/gtfswriter.svg?branch=master)](https://travis-ci.org/patrickbr/gtfswriter) [![GoDoc](https://godoc.org/github.com/patrickbr/gtfswriter?status.png)](https://godoc.org/github.com/patrickbr/gtfswriter)
+
 # go gtfswriter
 
 A writer for the GTFS structure created by the [go gtfsparser](https://github.com/patrickbr/gtfsparser). This can be used to write feeds that have been changed programmatically back to a GTFS feed.
@@ -28,11 +30,11 @@ The following options are supported:
 
 ## Known restrictions
 
-For direct output in ZIP file, you must create it before: 
+For direct output in ZIP file, you must create it before:
 
     // do stuff with feed
     os.Create("/path/to/output.zip")
-    
+
     w := gtfswriter.Writer{}
     werror := w.Write(feed, "/path/to/output")
 

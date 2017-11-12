@@ -20,6 +20,7 @@ import (
 	"strconv"
 )
 
+// A Writer for GTFS files
 type Writer struct {
 	//case write in Dir
 	curFileHandle *os.File
@@ -29,6 +30,7 @@ type Writer struct {
 	Sorted              bool
 }
 
+// Write a single GTFS feed to a system path, either a folder or a ZIP file
 func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	var e error
 
@@ -95,34 +97,31 @@ func (writer *Writer) getFileForWriting(path string, name string) (io.Writer, er
 		}
 
 		return os.Create(opath.Join(path, name))
-	} else {
-		//Archive
-		if writer.zipFile == nil {
-			zipF, err := os.Create(path)
-			if err != nil {
-				return nil, err
-			}
-			writer.zipFile = zip.NewWriter(zipF)
-
-			if writer.ZipCompressionLevel == 0 {
-				writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-					return flate.NewWriter(out, flate.DefaultCompression)
-				})
-			} else if writer.ZipCompressionLevel == -1 {
-				writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-					return flate.NewWriter(out, flate.NoCompression)
-				})
-			} else if writer.ZipCompressionLevel > 0 {
-				writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
-					return flate.NewWriter(out, writer.ZipCompressionLevel)
-				})
-			}
-		}
-		return writer.zipFile.Create(name)
-
 	}
 
-	return nil, errors.New("Could not open for writing.")
+	// ZIP Archive
+	if writer.zipFile == nil {
+		zipF, err := os.Create(path)
+		if err != nil {
+			return nil, err
+		}
+		writer.zipFile = zip.NewWriter(zipF)
+
+		if writer.ZipCompressionLevel == 0 {
+			writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+				return flate.NewWriter(out, flate.DefaultCompression)
+			})
+		} else if writer.ZipCompressionLevel == -1 {
+			writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+				return flate.NewWriter(out, flate.NoCompression)
+			})
+		} else if writer.ZipCompressionLevel > 0 {
+			writer.zipFile.RegisterCompressor(zip.Deflate, func(out io.Writer) (io.WriteCloser, error) {
+				return flate.NewWriter(out, writer.ZipCompressionLevel)
+			})
+		}
+	}
+	return writer.zipFile.Create(name)
 }
 
 func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err error) {
@@ -136,7 +135,7 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err err
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"agency.txt", r.(error).Error()}
+			err = writeError{"agency.txt", r.(error).Error()}
 		}
 	}()
 
@@ -185,7 +184,7 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"feed_info.txt", r.(error).Error()}
+			err = writeError{"feed_info.txt", r.(error).Error()}
 		}
 	}()
 
@@ -217,7 +216,7 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"stops.txt", r.(error).Error()}
+			err = writeError{"stops.txt", r.(error).Error()}
 		}
 	}()
 
@@ -235,15 +234,15 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		if wb == 0 {
 			wb = -1
 		}
-		parentStId := ""
+		parentStID := ""
 		if v.Parent_station != nil {
-			parentStId = v.Parent_station.Id
+			parentStID = v.Parent_station.Id
 		}
 		url := ""
 		if v.Url != nil {
 			url = v.Url.String()
 		}
-		csvwriter.WriteCsvLine([]string{v.Name, parentStId, v.Code, v.Zone_id, v.Id, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), url, intToString(locType), v.Timezone.GetTzString(), intToString(int(wb))})
+		csvwriter.WriteCsvLine([]string{v.Name, parentStID, v.Code, v.Zone_id, v.Id, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), url, intToString(locType), v.Timezone.GetTzString(), intToString(int(wb))})
 	}
 
 	if writer.Sorted {
@@ -268,7 +267,7 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"shapes.txt", r.(error).Error()}
+			err = writeError{"shapes.txt", r.(error).Error()}
 		}
 	}()
 
@@ -278,11 +277,11 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 
 	for _, v := range feed.Shapes {
 		for _, vp := range v.Points {
-			dist_trav := ""
+			distTrav := ""
 			if vp.HasDistanceTraveled() {
-				dist_trav = strconv.FormatFloat(float64(vp.Dist_traveled), 'f', -1, 32)
+				distTrav = strconv.FormatFloat(float64(vp.Dist_traveled), 'f', -1, 32)
 			}
-			csvwriter.WriteCsvLine([]string{v.Id, intToString(vp.Sequence), strconv.FormatFloat(float64(vp.Lat), 'f', -1, 32), strconv.FormatFloat(float64(vp.Lon), 'f', -1, 32), dist_trav})
+			csvwriter.WriteCsvLine([]string{v.Id, intToString(vp.Sequence), strconv.FormatFloat(float64(vp.Lat), 'f', -1, 32), strconv.FormatFloat(float64(vp.Lon), 'f', -1, 32), distTrav})
 		}
 	}
 
@@ -305,7 +304,7 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"routes.txt", r.(error).Error()}
+			err = writeError{"routes.txt", r.(error).Error()}
 		}
 	}()
 
@@ -363,7 +362,7 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"calendar.txt", r.(error).Error()}
+			err = writeError{"calendar.txt", r.(error).Error()}
 		}
 	}()
 
@@ -406,7 +405,7 @@ func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (er
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"calendar_dates.txt", r.(error).Error()}
+			err = writeError{"calendar_dates.txt", r.(error).Error()}
 		}
 	}()
 
@@ -438,7 +437,7 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed) (err error)
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"trips.txt", r.(error).Error()}
+			err = writeError{"trips.txt", r.(error).Error()}
 		}
 	}()
 
@@ -470,17 +469,17 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed) (err error)
 	return e
 }
 
-type TripLine struct {
+type tripLine struct {
 	Trip     *gtfs.Trip
 	Sequence int
 	Line     []string
 }
 
-type TripLines []TripLine
+type tripLines []tripLine
 
-func (tl TripLines) Len() int      { return len(tl) }
-func (tl TripLines) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
-func (tl TripLines) Less(i, j int) bool {
+func (tl tripLines) Len() int      { return len(tl) }
+func (tl tripLines) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
+func (tl tripLines) Less(i, j int) bool {
 	return tl[i].Trip.Route.Type < tl[j].Trip.Route.Type ||
 		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name < tl[j].Trip.Route.Long_name) ||
 		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign < tl[j].Trip.Headsign) ||
@@ -500,7 +499,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"stop_times.txt", r.(error).Error()}
+			err = writeError{"stop_times.txt", r.(error).Error()}
 		}
 	}()
 
@@ -508,13 +507,13 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 	csvwriter.SetHeader([]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "stop_headsign", "pickup_type", "drop_off_type", "shape_dist_traveled", "timepoint"},
 		[]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"})
 
-	var lines TripLines
+	var lines tripLines
 
 	for _, v := range feed.Trips {
 		for _, st := range v.StopTimes {
-			dist_trav := ""
+			distTrav := ""
 			if st.HasDistanceTraveled() {
-				dist_trav = strconv.FormatFloat(float64(st.Shape_dist_traveled), 'f', -1, 32)
+				distTrav = strconv.FormatFloat(float64(st.Shape_dist_traveled), 'f', -1, 32)
 			}
 			puType := int(st.Pickup_type)
 			if puType == 0 {
@@ -525,12 +524,12 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 				doType = -1
 			}
 			if st.Arrival_time.Empty() || st.Departure_time.Empty() {
-				lines = append(lines, TripLine{v, st.Sequence, []string{v.Id, "", "", st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""}})
+				lines = append(lines, tripLine{v, st.Sequence, []string{v.Id, "", "", st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), distTrav, ""}})
 			} else {
 				if st.Timepoint {
-					lines = append(lines, TripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, ""}})
+					lines = append(lines, tripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), distTrav, ""}})
 				} else {
-					lines = append(lines, TripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), dist_trav, "0"}})
+					lines = append(lines, tripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, intToString(st.Sequence), st.Headsign, intToString(puType), intToString(doType), distTrav, "0"}})
 				}
 			}
 		}
@@ -563,7 +562,7 @@ func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (e
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"fare_attributes.txt", r.(error).Error()}
+			err = writeError{"fare_attributes.txt", r.(error).Error()}
 		}
 	}()
 
@@ -604,7 +603,7 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"fare_rules.txt", r.(error).Error()}
+			err = writeError{"fare_rules.txt", r.(error).Error()}
 		}
 	}()
 
@@ -650,7 +649,7 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"frequencies.txt", r.(error).Error()}
+			err = writeError{"frequencies.txt", r.(error).Error()}
 		}
 	}()
 
@@ -689,7 +688,7 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = WriteError{"transfers.txt", r.(error).Error()}
+			err = writeError{"transfers.txt", r.(error).Error()}
 		}
 	}()
 
@@ -729,9 +728,8 @@ func intToString(i int) string {
 	if i < 0 {
 		// encoding of "empty"
 		return ""
-	} else {
-		return strconv.FormatInt(int64(i), 10)
 	}
+	return strconv.FormatInt(int64(i), 10)
 }
 
 func boolToGtfsBool(v bool) string {

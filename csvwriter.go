@@ -12,8 +12,12 @@ import (
 	"sort"
 )
 
+// Lines describes a slice of slice-encoded CSV lines
 type Lines [][]string
 
+// SortedLines is a Lines object extended by information
+// on the sorting depth (1 = sort by first column, 2 =
+// sort by first and second column, and so on)
 type SortedLines struct {
 	Lines     Lines
 	SortDepth int
@@ -32,6 +36,7 @@ func (l SortedLines) Less(i, j int) bool {
 	return false
 }
 
+// A CsvWriter is a wrapper around csv.Writer
 type CsvWriter struct {
 	writer      *csv.Writer
 	headers     []string
@@ -39,6 +44,7 @@ type CsvWriter struct {
 	lines       Lines
 }
 
+// NewCsvWriter returns a new CsvWriter instance
 func NewCsvWriter(file io.Writer) CsvWriter {
 	writer := csv.NewWriter(file)
 	p := CsvWriter{
@@ -51,6 +57,7 @@ func NewCsvWriter(file io.Writer) CsvWriter {
 	return p
 }
 
+// SetHeader sets the header for this CSV file
 func (p *CsvWriter) SetHeader(val []string, required []string) {
 	p.headerUsage = make([]bool, len(val))
 	p.headers = val
@@ -63,6 +70,7 @@ func (p *CsvWriter) SetHeader(val []string, required []string) {
 	}
 }
 
+// WriteCsvLine writes a single slice of values to the CSV file
 func (p *CsvWriter) WriteCsvLine(val []string) {
 	p.lines = append(p.lines, val)
 
@@ -73,10 +81,12 @@ func (p *CsvWriter) WriteCsvLine(val []string) {
 	}
 }
 
+// SortByCols sorts the current line cache by depth
 func (p *CsvWriter) SortByCols(depth int) {
 	sort.Sort(SortedLines{p.lines, depth})
 }
 
+// Flush the current line cache into the CSV file
 func (p *CsvWriter) Flush() {
 	if len(p.lines) == 0 {
 		return

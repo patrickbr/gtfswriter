@@ -10,11 +10,11 @@ import (
 	"fmt"
 )
 
-type WriteError struct {
+type writeError struct {
 	filename string
 	msg      string
 }
 
-func (e WriteError) Error() string {
-	return fmt.Sprintf("%s:%d - %s", e.filename, e.msg)
+func (e writeError) Error() string {
+	return fmt.Sprintf("%s - %s", e.filename, e.msg)
 }
