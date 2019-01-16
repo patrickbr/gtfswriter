@@ -89,6 +89,11 @@ func (p *CsvWriter) SortByCols(depth int) {
 // Flush the current line cache into the CSV file
 func (p *CsvWriter) Flush() {
 	if len(p.lines) == 0 {
+		e := p.writer.Write(p.headers)
+		p.writer.Flush()
+		if e != nil {
+			panic(e.Error())
+		}
 		return
 	}
 
