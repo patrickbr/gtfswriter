@@ -225,9 +225,9 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		[]string{"stop_name", "stop_id", "stop_lat", "stop_lon"})
 
 	for _, v := range feed.Stops {
-		locTypeBool := v.Location_type
-		locType := 1
-		if !locTypeBool {
+		locType := int(v.Location_type)
+		if locType == 0 {
+			// dont print locType 0
 			locType = -1
 		}
 		wb := v.Wheelchair_boarding
