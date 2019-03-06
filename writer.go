@@ -73,6 +73,10 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 		e = writer.writeTransfers(path, feed)
 	}
 
+	if e != nil {
+		return e
+	}
+
 	if writer.curFileHandle != nil {
 		writer.curFileHandle.Close()
 	}
