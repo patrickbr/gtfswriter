@@ -372,7 +372,7 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err error) {
 	hasCalendarEntries := false
 	for _, v := range feed.Services {
-		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] {
+		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] || v.IsEmpty() {
 			hasCalendarEntries = true
 			break
 		}
@@ -399,7 +399,7 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 		[]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"})
 
 	for _, v := range feed.Services {
-		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] {
+		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] || v.IsEmpty() {
 			csvwriter.WriteCsvLine([]string{boolToGtfsBool(v.Daymap[1]), boolToGtfsBool(v.Daymap[2]), boolToGtfsBool(v.Daymap[3]), boolToGtfsBool(v.Daymap[4]), boolToGtfsBool(v.Daymap[5]), boolToGtfsBool(v.Daymap[6]), boolToGtfsBool(v.Daymap[0]), dateToString(v.Start_date), dateToString(v.End_date), v.Id})
 		}
 	}
