@@ -28,6 +28,7 @@ type Writer struct {
 	zipFile             *zip.Writer
 	ZipCompressionLevel int
 	Sorted              bool
+	ExplicitCalendar    bool
 }
 
 // Write a single GTFS feed to a system path, either a folder or a ZIP file
@@ -377,7 +378,7 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 			break
 		}
 	}
-	if !hasCalendarEntries {
+	if !hasCalendarEntries && !writer.ExplicitCalendar {
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "calendar.txt")
@@ -401,6 +402,8 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 	for _, v := range feed.Services {
 		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] || v.IsEmpty() {
 			csvwriter.WriteCsvLine([]string{boolToGtfsBool(v.Daymap[1]), boolToGtfsBool(v.Daymap[2]), boolToGtfsBool(v.Daymap[3]), boolToGtfsBool(v.Daymap[4]), boolToGtfsBool(v.Daymap[5]), boolToGtfsBool(v.Daymap[6]), boolToGtfsBool(v.Daymap[0]), dateToString(v.Start_date), dateToString(v.End_date), v.Id})
+		} else if writer.ExplicitCalendar {
+			csvwriter.WriteCsvLine([]string{"0", "0", "0", "0", "0", "0", "0", dateToString(v.GetFirstDefinedDate()), dateToString(v.GetLastDefinedDate()), v.Id})
 		}
 	}
 
