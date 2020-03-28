@@ -29,6 +29,7 @@ type Writer struct {
 	ZipCompressionLevel int
 	Sorted              bool
 	ExplicitCalendar    bool
+	KeepColOrder        bool
 }
 
 // Write a single GTFS feed to a system path, either a folder or a ZIP file
@@ -154,6 +155,10 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err err
 	csvwriter.SetHeader([]string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone", "agency_fare_url", "agency_email"},
 		[]string{"agency_name", "agency_url", "agency_timezone"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Agencies)
+	}
+
 	for _, v := range feed.Agencies {
 		fareurl := ""
 		if v.Fare_url != nil {
@@ -203,6 +208,10 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 	csvwriter.SetHeader([]string{"feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date", "feed_version", "feed_contact_email", "feed_contact_url"},
 		[]string{"feed_publisher_name", "feed_publisher_url", "feed_lang"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.FeedInfos)
+	}
+
 	for _, v := range feed.FeedInfos {
 		puburl := ""
 		if v.Publisher_url != nil {
@@ -243,6 +252,10 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 	// write header
 	csvwriter.SetHeader([]string{"stop_name", "parent_station", "stop_code", "zone_id", "stop_id", "stop_desc", "stop_lat", "stop_lon", "stop_url", "location_type", "stop_timezone", "wheelchair_boarding", "level_id", "platform_code"},
 		[]string{"stop_name", "stop_id", "stop_lat", "stop_lon"})
+
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Stops)
+	}
 
 	for _, v := range feed.Stops {
 		locType := int(v.Location_type)
@@ -304,6 +317,10 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 	csvwriter.SetHeader([]string{"shape_id", "shape_pt_sequence", "shape_pt_lat", "shape_pt_lon", "shape_dist_traveled"},
 		[]string{"shape_id", "shape_pt_sequence", "shape_pt_lat", "shape_pt_lon"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Shapes)
+	}
+
 	for _, v := range feed.Shapes {
 		for _, vp := range v.Points {
 			distTrav := ""
@@ -340,6 +357,10 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 	// write header
 	csvwriter.SetHeader([]string{"route_long_name", "route_short_name", "agency_id", "route_desc", "route_type", "route_id", "route_url", "route_color", "route_text_color", "route_sort_order"},
 		[]string{"route_long_name", "route_short_name", "route_type", "route_id"})
+
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Routes)
+	}
 
 	for _, v := range feed.Routes {
 		agency := ""
@@ -399,6 +420,10 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 	csvwriter.SetHeader([]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"},
 		[]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Calendar)
+	}
+
 	for _, v := range feed.Services {
 		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] || v.IsEmpty() {
 			csvwriter.WriteCsvLine([]string{boolToGtfsBool(v.Daymap[1]), boolToGtfsBool(v.Daymap[2]), boolToGtfsBool(v.Daymap[3]), boolToGtfsBool(v.Daymap[4]), boolToGtfsBool(v.Daymap[5]), boolToGtfsBool(v.Daymap[6]), boolToGtfsBool(v.Daymap[0]), dateToString(v.Start_date), dateToString(v.End_date), v.Id})
@@ -443,6 +468,10 @@ func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (er
 	// write header
 	csvwriter.SetHeader([]string{"service_id", "exception_type", "date"}, []string{"service_id", "exception_type", "date"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.CalendarDates)
+	}
+
 	for _, v := range feed.Services {
 		for d, t := range v.Exceptions {
 			csvwriter.WriteCsvLine([]string{v.Id, posIntToString(int(t)), dateToString(d)})
@@ -475,6 +504,10 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed) (err error)
 	// write header
 	csvwriter.SetHeader([]string{"route_id", "service_id", "trip_headsign", "trip_short_name", "direction_id", "block_id", "shape_id", "trip_id", "wheelchair_accessible", "bikes_allowed"},
 		[]string{"route_id", "service_id", "trip_id"})
+
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Trips)
+	}
 
 	for _, v := range feed.Trips {
 		wa := int(v.Wheelchair_accessible)
@@ -537,6 +570,10 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 	// write header
 	csvwriter.SetHeader([]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "stop_headsign", "pickup_type", "drop_off_type", "shape_dist_traveled", "timepoint"},
 		[]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"})
+
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.StopTimes)
+	}
 
 	var lines tripLines
 
@@ -601,6 +638,10 @@ func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (e
 	csvwriter.SetHeader([]string{"fare_id", "price", "currency_type", "payment_method", "transfers", "transfer_duration", "agency_id"},
 		[]string{"fare_id", "price", "currency_type", "payment_method", "transfers"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.FareAttributes)
+	}
+
 	for _, v := range feed.FareAttributes {
 		agencyId := ""
 		if v.Agency != nil {
@@ -644,6 +685,10 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 
 	// write header
 	csvwriter.SetHeader([]string{"fare_id", "route_id", "origin_id", "destination_id", "contains_id"}, []string{"fare_id"})
+
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.FareAttributeRules)
+	}
 
 	for _, v := range feed.FareAttributes {
 		for _, r := range v.Rules {
@@ -691,6 +736,10 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 	// write header
 	csvwriter.SetHeader([]string{"trip_id", "start_time", "end_time", "headway_secs", "exact_times"}, []string{"trip_id", "start_time", "end_time", "headway_secs"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Frequencies)
+	}
+
 	for _, v := range feed.Trips {
 		for _, f := range v.Frequencies {
 			if !f.Exact_times {
@@ -731,6 +780,10 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 	csvwriter.SetHeader([]string{"from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"},
 		[]string{"from_stop_id", "to_stop_id", "transfer_type"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Transfers)
+	}
+
 	for _, v := range feed.Transfers {
 		transferType := v.Transfer_type
 		if transferType == 0 {
@@ -769,6 +822,10 @@ func (writer *Writer) writeLevels(path string, feed *gtfsparser.Feed) (err error
 	csvwriter.SetHeader([]string{"level_id", "level_index", "level_name"},
 		[]string{"fare_id", "level_index"})
 
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Levels)
+	}
+
 	for _, v := range feed.Levels {
 		csvwriter.WriteCsvLine([]string{v.Id, strconv.FormatFloat(float64(v.Index), 'f', -1, 32), v.Name})
 	}
@@ -802,6 +859,10 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 	// write header
 	csvwriter.SetHeader([]string{"pathway_id", "from_stop_id", "to_stop_id", "pathway_mode", "is_bidirectional", "length", "traversal_time", "stair_count", "max_slope", "min_width", "signposted_as", "reversed_signposted_as"},
 		[]string{"pathway_id", "from_stop_id", "to_stop_id", "pathway_mode", "is_bidirectional"})
+
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Pathways)
+	}
 
 	for _, v := range feed.Pathways {
 		length := ""

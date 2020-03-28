@@ -38,20 +38,24 @@ func (l SortedLines) Less(i, j int) bool {
 
 // A CsvWriter is a wrapper around csv.Writer
 type CsvWriter struct {
-	writer      *csv.Writer
-	headers     []string
-	headerUsage []bool
-	lines       Lines
+	writer           *csv.Writer
+	headers          []string
+	headerUsage      []bool
+	headerUsageCount int
+	lines            Lines
+	order            map[string]int
 }
 
 // NewCsvWriter returns a new CsvWriter instance
 func NewCsvWriter(file io.Writer) CsvWriter {
 	writer := csv.NewWriter(file)
 	p := CsvWriter{
-		writer:      writer,
-		headers:     make([]string, 0),
-		headerUsage: make([]bool, 0),
-		lines:       make(Lines, 0),
+		writer:           writer,
+		headers:          make([]string, 0),
+		headerUsage:      make([]bool, 0),
+		headerUsageCount: 0,
+		lines:            make(Lines, 0),
+		order:            make(map[string]int, 0),
 	}
 
 	return p
@@ -67,6 +71,12 @@ func (p *CsvWriter) SetHeader(val []string, required []string) {
 				p.headerUsage[i] = true
 			}
 		}
+	}
+}
+
+func (p *CsvWriter) SetOrder(order []string) {
+	for i, name := range order {
+		p.order[name] = i
 	}
 }
 
@@ -98,10 +108,11 @@ func (p *CsvWriter) Flush() {
 	}
 
 	// mask header
-	p.maskLine(&p.headers)
+	headerCp := append([]string(nil), p.headers...)
+	p.maskLine(&headerCp)
 
 	// write header
-	e := p.writer.Write(p.headers)
+	e := p.writer.Write(headerCp)
 
 	if e != nil {
 		panic(e.Error())
@@ -120,6 +131,20 @@ func (p *CsvWriter) Flush() {
 }
 
 func (p *CsvWriter) maskLine(val *[]string) {
+	if len(p.order) > 0 {
+		a := make([]string, len(p.order))
+		for i, h := range p.headerUsage {
+			if order, ok := p.order[p.headers[i]]; ok {
+				a[order] = (*val)[i]
+			} else if h {
+				a = append(a, (*val)[i])
+			}
+		}
+
+		*val = append([]string(nil), a...)
+		return
+	}
+
 	j := 0
 	for i, h := range p.headerUsage {
 		if !h {
