@@ -20,6 +20,13 @@ import (
 	"strconv"
 )
 
+type EntAttr struct {
+	attr   *gtfs.Attribution
+	route  *gtfs.Route
+	agency *gtfs.Agency
+	trip   *gtfs.Trip
+}
+
 // A Writer for GTFS files
 type Writer struct {
 	//case write in Dir
@@ -36,7 +43,10 @@ type Writer struct {
 func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	var e error
 
-	e = writer.writeAgencies(path, feed)
+	// collected route, trip and agency attributions
+	attributions := make([]EntAttr, 0)
+
+	e = writer.writeAgencies(path, feed, &attributions)
 
 	if e == nil {
 		e = writer.writeFeedInfos(path, feed)
@@ -48,7 +58,7 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 		e = writer.writeShapes(path, feed)
 	}
 	if e == nil {
-		e = writer.writeRoutes(path, feed)
+		e = writer.writeRoutes(path, feed, &attributions)
 	}
 	if e == nil {
 		e = writer.writeCalendar(path, feed)
@@ -57,7 +67,7 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 		e = writer.writeCalendarDates(path, feed)
 	}
 	if e == nil {
-		e = writer.writeTrips(path, feed)
+		e = writer.writeTrips(path, feed, &attributions)
 	}
 	if e == nil {
 		e = writer.writeStopTimes(path, feed)
@@ -79,6 +89,9 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	}
 	if e == nil {
 		e = writer.writePathways(path, feed)
+	}
+	if e == nil {
+		e = writer.writeAttributions(path, feed, attributions)
 	}
 
 	if e != nil {
@@ -136,7 +149,7 @@ func (writer *Writer) getFileForWriting(path string, name string) (io.Writer, er
 	return writer.zipFile.Create(name)
 }
 
-func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err error) {
+func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[]EntAttr) (err error) {
 	file, e := writer.getFileForWriting(path, "agency.txt")
 
 	if e != nil {
@@ -163,6 +176,10 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed) (err err
 		fareurl := ""
 		if v.Fare_url != nil {
 			fareurl = v.Fare_url.String()
+		}
+
+		for _, attr := range v.Attributions {
+			*attrs = append(*attrs, EntAttr{attr, nil, v, nil})
 		}
 
 		url := ""
@@ -339,7 +356,7 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 	return e
 }
 
-func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error) {
+func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]EntAttr) (err error) {
 	file, e := writer.getFileForWriting(path, "routes.txt")
 
 	if e != nil {
@@ -362,25 +379,29 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed) (err error
 		csvwriter.SetOrder(feed.ColOrders.Routes)
 	}
 
-	for _, v := range feed.Routes {
+	for _, r := range feed.Routes {
 		agency := ""
-		if v.Agency != nil {
-			agency = v.Agency.Id
+		if r.Agency != nil {
+			agency = r.Agency.Id
 		}
 
-		color := v.Color
+		for _, attr := range r.Attributions {
+			*attrs = append(*attrs, EntAttr{attr, r, nil, nil})
+		}
+
+		color := r.Color
 		if color == "FFFFFF" {
 			color = ""
 		}
-		textColor := v.Text_color
+		textColor := r.Text_color
 		if textColor == "000000" {
 			textColor = ""
 		}
 		url := ""
-		if v.Url != nil {
-			url = v.Url.String()
+		if r.Url != nil {
+			url = r.Url.String()
 		}
-		csvwriter.WriteCsvLine([]string{v.Long_name, v.Short_name, agency, v.Desc, posIntToString(int(v.Type)), v.Id, url, color, textColor, posIntToString(v.Sort_order)})
+		csvwriter.WriteCsvLine([]string{r.Long_name, r.Short_name, agency, r.Desc, posIntToString(int(r.Type)), r.Id, url, color, textColor, posIntToString(r.Sort_order)})
 	}
 
 	if writer.Sorted {
@@ -426,7 +447,7 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 
 	for _, v := range feed.Services {
 		if v.Daymap[0] || v.Daymap[1] || v.Daymap[2] || v.Daymap[3] || v.Daymap[4] || v.Daymap[5] || v.Daymap[6] || v.IsEmpty() {
-			csvwriter.WriteCsvLine([]string{boolToGtfsBool(v.Daymap[1]), boolToGtfsBool(v.Daymap[2]), boolToGtfsBool(v.Daymap[3]), boolToGtfsBool(v.Daymap[4]), boolToGtfsBool(v.Daymap[5]), boolToGtfsBool(v.Daymap[6]), boolToGtfsBool(v.Daymap[0]), dateToString(v.Start_date), dateToString(v.End_date), v.Id})
+			csvwriter.WriteCsvLine([]string{boolToGtfsBool(v.Daymap[1], true), boolToGtfsBool(v.Daymap[2], true), boolToGtfsBool(v.Daymap[3], true), boolToGtfsBool(v.Daymap[4], true), boolToGtfsBool(v.Daymap[5], true), boolToGtfsBool(v.Daymap[6], true), boolToGtfsBool(v.Daymap[0], true), dateToString(v.Start_date), dateToString(v.End_date), v.Id})
 		} else if writer.ExplicitCalendar {
 			csvwriter.WriteCsvLine([]string{"0", "0", "0", "0", "0", "0", "0", dateToString(v.GetFirstDefinedDate()), dateToString(v.GetLastDefinedDate()), v.Id})
 		}
@@ -486,7 +507,7 @@ func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (er
 	return e
 }
 
-func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed) (err error) {
+func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]EntAttr) (err error) {
 	file, e := writer.getFileForWriting(path, "trips.txt")
 
 	if e != nil {
@@ -513,6 +534,9 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed) (err error)
 		wa := int(v.Wheelchair_accessible)
 		if wa == 0 {
 			wa = -1
+		}
+		for _, attr := range v.Attributions {
+			*attrs = append(*attrs, EntAttr{attr, nil, nil, v})
 		}
 		ba := int(v.Bikes_allowed)
 		if ba == 0 {
@@ -852,7 +876,7 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = writeError{"levels.txt", r.(error).Error()}
+			err = writeError{"pathways.txt", r.(error).Error()}
 		}
 	}()
 
@@ -877,12 +901,89 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 		if v.Max_slope != 0 {
 			maxslope = strconv.FormatFloat(float64(v.Max_slope), 'f', -1, 32)
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, v.From_stop.Id, v.To_stop.Id, posIntToString(int(v.Mode)), boolToGtfsBool(v.Is_bidirectional), length, posIntToString(v.Traversal_time), posNegIntToString(v.Stair_count), maxslope, mwidth, v.Signposted_as, v.Reversed_signposted_as})
+		csvwriter.WriteCsvLine([]string{v.Id, v.From_stop.Id, v.To_stop.Id, posIntToString(int(v.Mode)), boolToGtfsBool(v.Is_bidirectional, true), length, posIntToString(v.Traversal_time), posNegIntToString(v.Stair_count), maxslope, mwidth, v.Signposted_as, v.Reversed_signposted_as})
 	}
 
 	if writer.Sorted {
 		csvwriter.SortByCols(1)
 	}
+	csvwriter.Flush()
+
+	return e
+}
+
+func (writer *Writer) writeAttributions(path string, feed *gtfsparser.Feed, attrs []EntAttr) (err error) {
+	if len(feed.Attributions) == 0 && len(attrs) == 0 {
+		return nil
+	}
+
+	file, e := writer.getFileForWriting(path, "attributions.txt")
+
+	if e != nil {
+		return errors.New("Could not open required file attributions.txt for writing")
+	}
+
+	csvwriter := NewCsvWriter(file)
+
+	defer func() {
+		if r := recover(); r != nil {
+			err = writeError{"attributions.txt", r.(error).Error()}
+		}
+	}()
+
+	// write header
+	csvwriter.SetHeader([]string{"attribution_id", "agency_id", "route_id", "trip_id", "organization_name", "is_producer", "is_operator", "is_authority", "attribution_url", "attribution_email", "attribution_phone"},
+		[]string{"organization_name"})
+
+	if writer.KeepColOrder {
+		csvwriter.SetOrder(feed.ColOrders.Attributions)
+	}
+
+	for _, a := range feed.Attributions {
+		url := ""
+		if a.Url != nil {
+			url = a.Url.String()
+		}
+
+		email := ""
+		if a.Email != nil {
+			email = a.Email.Address
+		}
+		csvwriter.WriteCsvLine([]string{a.Id, "", "", "", a.Organization_name, boolToGtfsBool(a.Is_producer, false), boolToGtfsBool(a.Is_operator, false), boolToGtfsBool(a.Is_authority, false), url, email, a.Phone})
+	}
+
+	for _, entattr := range attrs {
+		url := ""
+		a := entattr.attr
+		if a.Url != nil {
+			url = a.Url.String()
+		}
+
+		email := ""
+		if a.Email != nil {
+			email = a.Email.Address
+		}
+
+		routeid := ""
+		agencyid := ""
+		tripid := ""
+
+		if entattr.trip != nil {
+			tripid = entattr.trip.Id
+		}
+		if entattr.route != nil {
+			routeid = entattr.route.Id
+		}
+		if entattr.agency != nil {
+			agencyid = entattr.agency.Id
+		}
+		csvwriter.WriteCsvLine([]string{a.Id, agencyid, routeid, tripid, a.Organization_name, boolToGtfsBool(a.Is_producer, false), boolToGtfsBool(a.Is_operator, false), boolToGtfsBool(a.Is_authority, false), url, email, a.Phone})
+	}
+
+	if writer.Sorted {
+		csvwriter.SortByCols(1)
+	}
+
 	csvwriter.Flush()
 
 	return e
@@ -916,11 +1017,14 @@ func posNegIntToString(i int) string {
 	return strconv.FormatInt(int64(i), 10)
 }
 
-func boolToGtfsBool(v bool) string {
+func boolToGtfsBool(v bool, full bool) string {
 	if v {
 		return "1"
 	}
-	return "0"
+	if full {
+		return "0"
+	}
+	return ""
 }
 
 func floatEquals(a float64, b float64, e float64) bool {
