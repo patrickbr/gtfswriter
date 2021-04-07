@@ -494,7 +494,11 @@ func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (er
 	}
 
 	for _, v := range feed.Services {
-		for d, t := range v.Exceptions {
+		for d, traw := range v.Exceptions {
+			t := int8(1)
+			if !traw {
+				t = 2
+			}
 			csvwriter.WriteCsvLine([]string{v.Id, posIntToString(int(t)), dateToString(d)})
 		}
 	}
