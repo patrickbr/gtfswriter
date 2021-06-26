@@ -14,9 +14,9 @@ import (
 	"github.com/patrickbr/gtfsparser"
 	gtfs "github.com/patrickbr/gtfsparser/gtfs"
 	"io"
+	"math"
 	"os"
 	opath "path"
-	"sort"
 	"strconv"
 )
 
@@ -297,7 +297,7 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 			levelId = v.Level.Id
 		}
 
-		if v.Has_LatLon {
+		if v.HasLatLon() {
 			csvwriter.WriteCsvLine([]string{v.Name, parentStID, v.Code, v.Zone_id, v.Id, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), url, posIntToString(locType), v.Timezone.GetTzString(), posIntToString(int(wb)), levelId, v.Platform_code})
 		} else {
 			csvwriter.WriteCsvLine([]string{v.Name, parentStID, v.Code, v.Zone_id, v.Id, v.Desc, "", "", url, posIntToString(locType), v.Timezone.GetTzString(), posIntToString(int(wb)), levelId, v.Platform_code})
@@ -534,22 +534,22 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 		csvwriter.SetOrder(feed.ColOrders.Trips)
 	}
 
-	for _, v := range feed.Trips {
-		wa := int(v.Wheelchair_accessible)
+	for _, t := range feed.Trips {
+		wa := int(t.Wheelchair_accessible)
 		if wa == 0 {
 			wa = -1
 		}
-		for _, attr := range v.Attributions {
-			*attrs = append(*attrs, EntAttr{attr, nil, nil, v})
+		for _, attr := range t.Attributions {
+			*attrs = append(*attrs, EntAttr{attr, nil, nil, t})
 		}
-		ba := int(v.Bikes_allowed)
+		ba := int(t.Bikes_allowed)
 		if ba == 0 {
 			ba = -1
 		}
-		if v.Shape == nil {
-			csvwriter.WriteCsvLine([]string{v.Route.Id, v.Service.Id, v.Headsign, v.Short_name, posIntToString(int(v.Direction_id)), v.Block_id, "", v.Id, posIntToString(wa), posIntToString(ba)})
+		if t.Shape == nil {
+			csvwriter.WriteCsvLine([]string{t.Route.Id, t.Service.Id, t.Headsign, t.Short_name, posIntToString(int(t.Direction_id)), t.Block_id, "", t.Id, posIntToString(wa), posIntToString(ba)})
 		} else {
-			csvwriter.WriteCsvLine([]string{v.Route.Id, v.Service.Id, v.Headsign, v.Short_name, posIntToString(int(v.Direction_id)), v.Block_id, v.Shape.Id, v.Id, posIntToString(wa), posIntToString(ba)})
+			csvwriter.WriteCsvLine([]string{t.Route.Id, t.Service.Id, t.Headsign, t.Short_name, posIntToString(int(t.Direction_id)), t.Block_id, t.Shape.Id, t.Id, posIntToString(wa), posIntToString(ba)})
 		}
 	}
 
@@ -559,25 +559,6 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 	csvwriter.Flush()
 
 	return e
-}
-
-type tripLine struct {
-	Trip     *gtfs.Trip
-	Sequence int
-	Line     []string
-}
-
-type tripLines []tripLine
-
-func (tl tripLines) Len() int      { return len(tl) }
-func (tl tripLines) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
-func (tl tripLines) Less(i, j int) bool {
-	return tl[i].Trip.Route.Type < tl[j].Trip.Route.Type ||
-		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name < tl[j].Trip.Route.Long_name) ||
-		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign < tl[j].Trip.Headsign) ||
-		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id < tl[j].Trip.Route.Id) ||
-		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id == tl[j].Trip.Route.Id && tl[i].Trip.Id < tl[j].Trip.Id) ||
-		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id == tl[j].Trip.Route.Id && tl[i].Trip.Id == tl[j].Trip.Id && tl[i].Sequence < tl[j].Sequence)
 }
 
 func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err error) {
@@ -603,8 +584,6 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 		csvwriter.SetOrder(feed.ColOrders.StopTimes)
 	}
 
-	var lines tripLines
-
 	for _, v := range feed.Trips {
 		for _, st := range v.StopTimes {
 			distTrav := ""
@@ -620,23 +599,19 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 				doType = -1
 			}
 			if st.Arrival_time.Empty() || st.Departure_time.Empty() {
-				lines = append(lines, tripLine{v, st.Sequence, []string{v.Id, "", "", st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""}})
+				csvwriter.WriteCsvLine([]string{v.Id, "", "", st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""})
 			} else {
 				if st.Timepoint {
-					lines = append(lines, tripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""}})
+					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""})
 				} else {
-					lines = append(lines, tripLine{v, st.Sequence, []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, "0"}})
+					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, "0"})
 				}
 			}
 		}
 	}
 
 	if writer.Sorted {
-		sort.Sort(lines)
-	}
-
-	for _, v := range lines {
-		csvwriter.WriteCsvLine(v.Line)
+		csvwriter.SortByCols(1)
 	}
 
 	csvwriter.Flush()
@@ -894,11 +869,11 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 
 	for _, v := range feed.Pathways {
 		length := ""
-		if v.Has_length {
+		if !math.IsNaN(float64(v.Length)) {
 			length = strconv.FormatFloat(float64(v.Length), 'f', -1, 32)
 		}
 		mwidth := ""
-		if v.Has_min_width {
+		if !math.IsNaN(float64(v.Min_width)) {
 			mwidth = strconv.FormatFloat(float64(v.Min_width), 'f', -1, 32)
 		}
 		maxslope := ""
