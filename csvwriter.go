@@ -83,6 +83,21 @@ func (p *CsvWriter) SetOrder(order []string) {
 func (p *CsvWriter) WriteCsvLine(val []string) {
 	p.lines = append(p.lines, val)
 
+	p.HeaderUsage(val)
+}
+
+// WriteCsvLineRaw writes a single slice of values to the CSV file
+func (p *CsvWriter) WriteCsvLineRaw(val []string) {
+	p.maskLine(&val)
+	e := p.writer.Write(val)
+
+	if e != nil {
+		panic(e.Error())
+	}
+}
+
+// WriteCsvLine writes a single slice of values to the CSV file
+func (p *CsvWriter) HeaderUsage(val []string) {
 	for i, v := range val {
 		if len(v) > 0 {
 			p.headerUsage[i] = true
@@ -106,6 +121,16 @@ func (p *CsvWriter) Flush() {
 		return
 	}
 
+	p.WriteHeader()
+
+	for _, v := range p.lines {
+		p.WriteCsvLineRaw(v)
+	}
+	p.FlushFile()
+	p.lines = nil
+}
+
+func (p *CsvWriter) WriteHeader() {
 	// mask header
 	headerCp := append([]string(nil), p.headers...)
 	p.maskLine(&headerCp)
@@ -117,16 +142,11 @@ func (p *CsvWriter) Flush() {
 		panic(e.Error())
 	}
 
-	for _, v := range p.lines {
-		p.maskLine(&v)
-		e := p.writer.Write(v)
+}
 
-		if e != nil {
-			panic(e.Error())
-		}
-	}
+// Flush the current line cache into the CSV file
+func (p *CsvWriter) FlushFile() {
 	p.writer.Flush()
-	p.lines = nil
 }
 
 func (p *CsvWriter) maskLine(val *[]string) {

@@ -17,6 +17,7 @@ import (
 	"math"
 	"os"
 	opath "path"
+	"sort"
 	"strconv"
 )
 
@@ -312,6 +313,26 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 	return e
 }
 
+type shapeLine struct {
+	Shape *gtfs.Shape
+}
+
+type shapeLines []shapeLine
+
+func (sl shapeLines) Len() int      { return len(sl) }
+func (sl shapeLines) Swap(i, j int) { sl[i], sl[j] = sl[j], sl[i] }
+func (sl shapeLines) Less(i, j int) bool {
+	return sl[i].Shape.Id < sl[j].Shape.Id
+}
+
+func (writer *Writer) shapePointLine(v *gtfs.Shape, vp *gtfs.ShapePoint) []string {
+	distTrav := ""
+	if vp.HasDistanceTraveled() {
+		distTrav = strconv.FormatFloat(float64(vp.Dist_traveled), 'f', -1, 32)
+	}
+	return []string{v.Id, posIntToString(vp.Sequence), strconv.FormatFloat(float64(vp.Lat), 'f', -1, 32), strconv.FormatFloat(float64(vp.Lon), 'f', -1, 32), distTrav}
+}
+
 func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error) {
 	if len(feed.Shapes) == 0 {
 		return nil
@@ -338,20 +359,29 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 		csvwriter.SetOrder(feed.ColOrders.Shapes)
 	}
 
+	var lines shapeLines
+
 	for _, v := range feed.Shapes {
+		lines = append(lines, shapeLine{v})
+
 		for _, vp := range v.Points {
-			distTrav := ""
-			if vp.HasDistanceTraveled() {
-				distTrav = strconv.FormatFloat(float64(vp.Dist_traveled), 'f', -1, 32)
-			}
-			csvwriter.WriteCsvLine([]string{v.Id, posIntToString(vp.Sequence), strconv.FormatFloat(float64(vp.Lat), 'f', -1, 32), strconv.FormatFloat(float64(vp.Lon), 'f', -1, 32), distTrav})
+			csvwriter.HeaderUsage(writer.shapePointLine(v, &vp))
 		}
 	}
 
 	if writer.Sorted {
-		csvwriter.SortByCols(2)
+		sort.Sort(lines)
 	}
-	csvwriter.Flush()
+
+	csvwriter.WriteHeader()
+
+	for _, v := range lines {
+		for _, vp := range v.Shape.Points {
+			csvwriter.WriteCsvLineRaw(writer.shapePointLine(v.Shape, &vp))
+		}
+	}
+
+	csvwriter.FlushFile()
 
 	return e
 }
@@ -561,6 +591,46 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 	return e
 }
 
+type tripLine struct {
+	Trip *gtfs.Trip
+}
+
+type tripLines []tripLine
+
+func (tl tripLines) Len() int      { return len(tl) }
+func (tl tripLines) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
+func (tl tripLines) Less(i, j int) bool {
+	return tl[i].Trip.Route.Type < tl[j].Trip.Route.Type ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name < tl[j].Trip.Route.Long_name) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign < tl[j].Trip.Headsign) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id < tl[j].Trip.Route.Id) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && tl[i].Trip.Headsign == tl[j].Trip.Headsign && tl[i].Trip.Route.Id == tl[j].Trip.Route.Id && tl[i].Trip.Id < tl[j].Trip.Id)
+}
+
+func (writer *Writer) stopTimeLine(v *gtfs.Trip, st *gtfs.StopTime) []string {
+	distTrav := ""
+	if st.HasDistanceTraveled() {
+		distTrav = strconv.FormatFloat(float64(st.Shape_dist_traveled), 'f', -1, 32)
+	}
+	puType := int(st.Pickup_type)
+	if puType == 0 {
+		puType = -1
+	}
+	doType := int(st.Drop_off_type)
+	if doType == 0 {
+		doType = -1
+	}
+	if st.Arrival_time.Empty() || st.Departure_time.Empty() {
+		return []string{v.Id, "", "", st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""}
+	} else {
+		if st.Timepoint {
+			return []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""}
+		} else {
+			return []string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, "0"}
+		}
+	}
+}
+
 func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err error) {
 	file, e := writer.getFileForWriting(path, "stop_times.txt")
 
@@ -584,37 +654,28 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 		csvwriter.SetOrder(feed.ColOrders.StopTimes)
 	}
 
+	var lines tripLines
+
 	for _, v := range feed.Trips {
+		lines = append(lines, tripLine{v})
 		for _, st := range v.StopTimes {
-			distTrav := ""
-			if st.HasDistanceTraveled() {
-				distTrav = strconv.FormatFloat(float64(st.Shape_dist_traveled), 'f', -1, 32)
-			}
-			puType := int(st.Pickup_type)
-			if puType == 0 {
-				puType = -1
-			}
-			doType := int(st.Drop_off_type)
-			if doType == 0 {
-				doType = -1
-			}
-			if st.Arrival_time.Empty() || st.Departure_time.Empty() {
-				csvwriter.WriteCsvLine([]string{v.Id, "", "", st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""})
-			} else {
-				if st.Timepoint {
-					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, ""})
-				} else {
-					csvwriter.WriteCsvLine([]string{v.Id, timeToString(st.Arrival_time), timeToString(st.Departure_time), st.Stop.Id, posIntToString(st.Sequence), st.Headsign, posIntToString(puType), posIntToString(doType), distTrav, "0"})
-				}
-			}
+			csvwriter.HeaderUsage(writer.stopTimeLine(v, &st))
 		}
 	}
 
 	if writer.Sorted {
-		csvwriter.SortByCols(1)
+		sort.Sort(lines)
 	}
 
-	csvwriter.Flush()
+	csvwriter.WriteHeader()
+
+	for _, v := range lines {
+		for _, st := range v.Trip.StopTimes {
+			csvwriter.WriteCsvLineRaw(writer.stopTimeLine(v.Trip, &st))
+		}
+	}
+
+	csvwriter.FlushFile()
 
 	return e
 }
