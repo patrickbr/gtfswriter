@@ -109,6 +109,25 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	return e
 }
 
+func (writer *Writer) delExistingFile(path string, name string) error {
+	fileInfo, err := os.Stat(path)
+
+	if err != nil {
+		return err
+	}
+
+	if fileInfo.IsDir() {
+		if _, err := os.Stat(opath.Join(path, name)); err == nil {
+			err := os.Remove(opath.Join(path, name))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (writer *Writer) getFileForWriting(path string, name string) (io.Writer, error) {
 	fileInfo, err := os.Stat(path)
 
@@ -206,6 +225,7 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[
 
 func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err error) {
 	if len(feed.FeedInfos) == 0 {
+		writer.delExistingFile(path, "feed_info.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "feed_info.txt")
@@ -335,6 +355,7 @@ func (writer *Writer) shapePointLine(v *gtfs.Shape, vp *gtfs.ShapePoint) []strin
 
 func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error) {
 	if len(feed.Shapes) == 0 {
+		writer.delExistingFile(path, "shapes.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "shapes.txt")
@@ -451,6 +472,7 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 		}
 	}
 	if !hasCalendarEntries && !writer.ExplicitCalendar {
+		writer.delExistingFile(path, "calendar.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "calendar.txt")
@@ -500,6 +522,7 @@ func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (er
 		}
 	}
 	if !hasCalendarDatesEntries {
+		writer.delExistingFile(path, "calendar_dates.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "calendar_dates.txt")
@@ -682,6 +705,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 
 func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (err error) {
 	if len(feed.FareAttributes) == 0 {
+		writer.delExistingFile(path, "fare_attributes.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "fare_attributes.txt")
@@ -731,6 +755,7 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 		}
 	}
 	if !hasFareAttrRules {
+		writer.delExistingFile(path, "fare_rules.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "fare_rules.txt")
@@ -781,6 +806,7 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 		}
 	}
 	if !hasFrequencies {
+		writer.delExistingFile(path, "frequencies.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "frequencies.txt")
@@ -824,6 +850,7 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 
 func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err error) {
 	if len(feed.Transfers) == 0 {
+		writer.delExistingFile(path, "transfers.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "transfers.txt")
@@ -866,6 +893,7 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 
 func (writer *Writer) writeLevels(path string, feed *gtfsparser.Feed) (err error) {
 	if len(feed.Levels) == 0 {
+		writer.delExistingFile(path, "levels.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "levels.txt")
@@ -904,6 +932,7 @@ func (writer *Writer) writeLevels(path string, feed *gtfsparser.Feed) (err error
 
 func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err error) {
 	if len(feed.Pathways) == 0 {
+		writer.delExistingFile(path, "pathways.txt")
 		return nil
 	}
 	file, e := writer.getFileForWriting(path, "pathways.txt")
@@ -954,6 +983,7 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 
 func (writer *Writer) writeAttributions(path string, feed *gtfsparser.Feed, attrs []EntAttr) (err error) {
 	if len(feed.Attributions) == 0 && len(attrs) == 0 {
+		writer.delExistingFile(path, "attributions.txt")
 		return nil
 	}
 
