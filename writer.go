@@ -19,6 +19,7 @@ import (
 	opath "path"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type EntAttr struct {
@@ -211,7 +212,7 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[
 		if v.Email != nil {
 			email = v.Email.Address
 		}
-		csvwriter.WriteCsvLine([]string{v.Id, v.Name, url, v.Timezone.GetTzString(), v.Lang.GetLangString(), v.Phone, fareurl, email})
+		csvwriter.WriteCsvLine([]string{v.Id, strings.Replace(v.Name, "\n", " ", -1), url, v.Timezone.GetTzString(), v.Lang.GetLangString(), v.Phone, fareurl, email})
 	}
 
 	if writer.Sorted {
@@ -263,7 +264,7 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 		if v.Contact_email != nil {
 			contactemail = v.Contact_email.Address
 		}
-		csvwriter.WriteCsvLine([]string{v.Publisher_name, puburl, v.Lang, dateToString(v.Start_date), dateToString(v.End_date), v.Version, contactemail, contacturl})
+		csvwriter.WriteCsvLine([]string{strings.Replace(v.Publisher_name, "\n", " ", -1), puburl, v.Lang, dateToString(v.Start_date), dateToString(v.End_date), strings.Replace(v.Version, "\n", " ", -1), contactemail, contacturl})
 	}
 
 	csvwriter.Flush()
@@ -318,9 +319,9 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 		}
 
 		if v.HasLatLon() {
-			csvwriter.WriteCsvLine([]string{v.Name, parentStID, v.Code, v.Zone_id, v.Id, v.Desc, strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), url, posIntToString(locType), v.Timezone.GetTzString(), posIntToString(int(wb)), levelId, v.Platform_code})
+			csvwriter.WriteCsvLine([]string{strings.Replace(v.Name, "\n", " ", -1), parentStID, v.Code, v.Zone_id, v.Id, strings.Replace(v.Desc, "\n", " ", -1), strconv.FormatFloat(float64(v.Lat), 'f', -1, 32), strconv.FormatFloat(float64(v.Lon), 'f', -1, 32), url, posIntToString(locType), v.Timezone.GetTzString(), posIntToString(int(wb)), levelId, v.Platform_code})
 		} else {
-			csvwriter.WriteCsvLine([]string{v.Name, parentStID, v.Code, v.Zone_id, v.Id, v.Desc, "", "", url, posIntToString(locType), v.Timezone.GetTzString(), posIntToString(int(wb)), levelId, v.Platform_code})
+			csvwriter.WriteCsvLine([]string{strings.Replace(v.Name, "\n", " ", -1), parentStID, v.Code, v.Zone_id, v.Id, strings.Replace(v.Desc, "\n", " ", -1), "", "", url, posIntToString(locType), v.Timezone.GetTzString(), posIntToString(int(wb)), levelId, v.Platform_code})
 		}
 	}
 
@@ -450,7 +451,8 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]E
 		if r.Url != nil {
 			url = r.Url.String()
 		}
-		csvwriter.WriteCsvLine([]string{r.Long_name, r.Short_name, agency, r.Desc, posIntToString(int(r.Type)), r.Id, url, color, textColor, posIntToString(r.Sort_order)})
+
+		csvwriter.WriteCsvLine([]string{strings.Replace(r.Long_name, "\n", " ", -1), strings.Replace(r.Short_name, "\n", " ", -1), agency, strings.Replace(r.Desc, "\n", " ", -1), posIntToString(int(r.Type)), r.Id, url, color, textColor, posIntToString(r.Sort_order)})
 	}
 
 	if writer.Sorted {
@@ -596,9 +598,9 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 			ba = -1
 		}
 		if t.Shape == nil {
-			csvwriter.WriteCsvLine([]string{t.Route.Id, t.Service.Id, t.Headsign, t.Short_name, posIntToString(int(t.Direction_id)), t.Block_id, "", t.Id, posIntToString(wa), posIntToString(ba)})
+			csvwriter.WriteCsvLine([]string{t.Route.Id, t.Service.Id, strings.Replace(t.Headsign, "\n", " ", -1), strings.Replace(t.Short_name, "\n", " ", -1), posIntToString(int(t.Direction_id)), t.Block_id, "", t.Id, posIntToString(wa), posIntToString(ba)})
 		} else {
-			csvwriter.WriteCsvLine([]string{t.Route.Id, t.Service.Id, t.Headsign, t.Short_name, posIntToString(int(t.Direction_id)), t.Block_id, t.Shape.Id, t.Id, posIntToString(wa), posIntToString(ba)})
+			csvwriter.WriteCsvLine([]string{t.Route.Id, t.Service.Id, strings.Replace(t.Headsign, "\n", " ", -1), strings.Replace(t.Short_name, "\n", " ", -1), posIntToString(int(t.Direction_id)), t.Block_id, t.Shape.Id, t.Id, posIntToString(wa), posIntToString(ba)})
 		}
 	}
 
