@@ -869,12 +869,19 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 		csvwriter.SetOrder(feed.ColOrders.Transfers)
 	}
 
-	for _, v := range feed.Transfers {
-		transferType := v.Transfer_type
+	// avoid writing dupcliate transfers, they will not be noticed because they don't have unique IDs
+	inserted := make(map[gtfs.Transfer]bool)
+
+	for _, t := range feed.Transfers {
+		if _, ok := inserted[*t]; ok {
+			continue
+		}
+		inserted[*t] = true
+		transferType := t.Transfer_type
 		if transferType == 0 {
 			transferType = -1
 		}
-		csvwriter.WriteCsvLine([]string{v.From_stop.Id, v.To_stop.Id, posIntToString(transferType), posIntToString(v.Min_transfer_time)})
+		csvwriter.WriteCsvLine([]string{t.From_stop.Id, t.To_stop.Id, posIntToString(transferType), posIntToString(t.Min_transfer_time)})
 	}
 
 	if writer.Sorted {
