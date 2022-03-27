@@ -39,6 +39,7 @@ func (l SortedLines) Less(i, j int) bool {
 type CsvWriter struct {
 	writer           *csv.Writer
 	headers          []string
+	headersMap       map[string]int
 	headerUsage      []bool
 	headerUsageCount int
 	lines            Lines
@@ -51,6 +52,7 @@ func NewCsvWriter(file io.Writer) CsvWriter {
 	p := CsvWriter{
 		writer:           writer,
 		headers:          make([]string, 0),
+		headersMap:       make(map[string]int, 0),
 		headerUsage:      make([]bool, 0),
 		headerUsageCount: 0,
 		lines:            make(Lines, 0),
@@ -64,6 +66,10 @@ func NewCsvWriter(file io.Writer) CsvWriter {
 func (p *CsvWriter) SetHeader(val []string, required []string) {
 	p.headerUsage = make([]bool, len(val))
 	p.headers = val
+	for i, h := range val {
+		p.headersMap[h] = i
+	}
+
 	for _, req := range required {
 		for i, v := range p.headers {
 			if v == req {
@@ -74,8 +80,13 @@ func (p *CsvWriter) SetHeader(val []string, required []string) {
 }
 
 func (p *CsvWriter) SetOrder(order []string) {
-	for i, name := range order {
-		p.order[name] = i
+	a := 0
+	for _, name := range order {
+		// don't write order for headers we don't use!
+		if _, ok := p.headersMap[name]; ok {
+			p.order[name] = a
+			a = a + 1
+		}
 	}
 }
 
@@ -96,7 +107,7 @@ func (p *CsvWriter) WriteCsvLineRaw(val []string) {
 	}
 }
 
-// WriteCsvLine writes a single slice of values to the CSV file
+// HeaderUsage updates the header usage for a single row
 func (p *CsvWriter) HeaderUsage(val []string) {
 	for i, v := range val {
 		if len(v) > 0 {
@@ -151,6 +162,7 @@ func (p *CsvWriter) FlushFile() {
 
 func (p *CsvWriter) maskLine(val *[]string) {
 	if len(p.order) > 0 {
+
 		a := make([]string, len(p.order))
 		for i, h := range p.headerUsage {
 			if order, ok := p.order[p.headers[i]]; ok {
