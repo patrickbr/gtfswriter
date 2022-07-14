@@ -103,7 +103,7 @@ func (p *CsvWriter) WriteCsvLineRaw(val []string) {
 	e := p.writer.Write(val)
 
 	if e != nil {
-		panic(e.Error())
+		panic(e)
 	}
 }
 
@@ -127,7 +127,7 @@ func (p *CsvWriter) Flush() {
 		e := p.writer.Write(p.headers)
 		p.writer.Flush()
 		if e != nil {
-			panic(e.Error())
+			panic(e)
 		}
 		return
 	}
@@ -150,7 +150,7 @@ func (p *CsvWriter) WriteHeader() {
 	e := p.writer.Write(headerCp)
 
 	if e != nil {
-		panic(e.Error())
+		panic(e)
 	}
 
 }
