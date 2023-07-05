@@ -474,7 +474,7 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 			runtime.GC()
 		}
 
-		for _, vp := range v.Points {
+		for _, vp := range v.Points[:] {
 			row := writer.shapePointLine(v, &vp)
 
 			// fill them with dummy values to make sure they count as non-empty
@@ -493,13 +493,13 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 
 	i = 0
 
-	for _, v := range lines {
+	for _, v := range lines[:] {
 		i += 1
 		if i%10000000 == 0 {
 			runtime.GC()
 		}
 
-		for _, vp := range v.Shape.Points {
+		for _, vp := range v.Shape.Points[:] {
 			row := writer.shapePointLine(v.Shape, &vp)
 
 			// additional fields
@@ -865,7 +865,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 			runtime.GC()
 		}
 
-		for _, st := range v.StopTimes {
+		for _, st := range v.StopTimes[:] {
 			row := writer.stopTimeLine(v, &st)
 
 			// fill them with dummy values to make sure they count as non-empty
@@ -885,13 +885,13 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 
 	i = 0
 
-	for _, v := range lines {
+	for _, v := range lines[:] {
 		i += 1
 		if i%10000000 == 0 {
 			runtime.GC()
 		}
 
-		for _, st := range v.Trip.StopTimes {
+		for _, st := range v.Trip.StopTimes[:] {
 			row := writer.stopTimeLine(v.Trip, &st)
 
 			// additional fields
@@ -1016,7 +1016,7 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 	}
 
 	for _, v := range feed.FareAttributes {
-		for _, r := range v.Rules {
+		for _, r := range v.Rules[:] {
 			row := make([]string, 0)
 
 			if r.Route == nil {
@@ -1087,7 +1087,7 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 	}
 
 	for _, v := range feed.Trips {
-		for _, f := range v.Frequencies {
+		for _, f := range v.Frequencies[:] {
 			row := make([]string, 0)
 			if !f.Exact_times {
 				row = []string{v.Id, timeToString(f.Start_time), timeToString(f.End_time), posIntToString(f.Headway_secs), ""}
