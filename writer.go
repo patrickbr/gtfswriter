@@ -223,7 +223,7 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[
 			fareurl = v.Fare_url.String()
 		}
 
-		for _, attr := range v.Attributions {
+		for _, attr := range v.Attributions[:] {
 			*attrs = append(*attrs, EntAttr{attr, nil, v, nil})
 		}
 
@@ -239,7 +239,7 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[
 
 		row := []string{v.Id, strings.Replace(v.Name, "\n", " ", -1), url, v.Timezone.GetTzString(), v.Lang.GetLangString(), v.Phone, fareurl, email}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.AgenciesAddFlds[name][v.Id]; ok {
 				row = append(row, vald)
 			} else {
@@ -311,7 +311,7 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 
 		row := []string{strings.Replace(v.Publisher_name, "\n", " ", -1), puburl, v.Lang, dateToString(v.Start_date), dateToString(v.End_date), strings.Replace(v.Version, "\n", " ", -1), contactemail, contacturl}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.FeedInfosAddFlds[name][v]; ok {
 				row = append(row, vald)
 			} else {
@@ -389,7 +389,7 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 			row = []string{strings.Replace(v.Name, "\n", " ", -1), parentStID, v.Code, v.Zone_id, v.Id, strings.Replace(v.Desc, "\n", " ", -1), "", "", url, posIntToString(locType), v.Timezone.GetTzString(), posIntToString(int(wb)), levelId, v.Platform_code}
 		}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.StopsAddFlds[name][v.Id]; ok {
 				row = append(row, vald)
 			} else {
@@ -470,10 +470,6 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 		lines[i] = shapeLine{v}
 		i += 1
 
-		if i%10000000 == 0 {
-			runtime.GC()
-		}
-
 		for _, vp := range v.Points[:] {
 			row := writer.shapePointLine(v, &vp)
 
@@ -495,15 +491,12 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 
 	for _, v := range lines[:] {
 		i += 1
-		if i%10000000 == 0 {
-			runtime.GC()
-		}
 
 		for _, vp := range v.Shape.Points[:] {
 			row := writer.shapePointLine(v.Shape, &vp)
 
 			// additional fields
-			for _, name := range addFieldsOrder {
+			for _, name := range addFieldsOrder[:] {
 				if vald, ok := feed.ShapesAddFlds[name][v.Shape.Id][int(vp.Sequence)]; ok {
 					row = append(row, vald)
 				} else {
@@ -558,7 +551,7 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]E
 			agency = r.Agency.Id
 		}
 
-		for _, attr := range r.Attributions {
+		for _, attr := range r.Attributions[:] {
 			*attrs = append(*attrs, EntAttr{attr, r, nil, nil})
 		}
 
@@ -585,7 +578,7 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]E
 
 		row := []string{strings.Replace(r.Long_name, "\n", " ", -1), strings.Replace(r.Short_name, "\n", " ", -1), agency, strings.Replace(r.Desc, "\n", " ", -1), posIntToString(int(r.Type)), r.Id, url, color, textColor, posIntToString(r.Sort_order), posIntToString(contPickup), posIntToString(contDropOff)}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.RoutesAddFlds[name][r.Id]; ok {
 				row = append(row, vald)
 			} else {
@@ -739,7 +732,7 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 		if wa == 0 {
 			wa = -1
 		}
-		for _, attr := range t.Attributions {
+		for _, attr := range t.Attributions[:] {
 			*attrs = append(*attrs, EntAttr{attr, nil, nil, t})
 		}
 		ba := int(t.Bikes_allowed)
@@ -755,7 +748,7 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 			row = []string{t.Route.Id, t.Service.Id(), strings.Replace(*t.Headsign, "\n", " ", -1), strings.Replace(t.Short_name, "\n", " ", -1), posIntToString(int(t.Direction_id)), t.Block_id, t.Shape.Id, t.Id, posIntToString(wa), posIntToString(ba)}
 		}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.TripsAddFlds[name][t.Id]; ok {
 				row = append(row, vald)
 			} else {
@@ -861,10 +854,6 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 		lines[i] = tripLine{v}
 		i += 1
 
-		if i%10000000 == 0 {
-			runtime.GC()
-		}
-
 		for _, st := range v.StopTimes[:] {
 			row := writer.stopTimeLine(v, &st)
 
@@ -887,15 +876,12 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 
 	for _, v := range lines[:] {
 		i += 1
-		if i%10000000 == 0 {
-			runtime.GC()
-		}
 
 		for _, st := range v.Trip.StopTimes[:] {
 			row := writer.stopTimeLine(v.Trip, &st)
 
 			// additional fields
-			for _, name := range addFieldsOrder {
+			for _, name := range addFieldsOrder[:] {
 				if vald, ok := feed.StopTimesAddFlds[name][v.Trip.Id][st.Sequence()]; ok {
 					row = append(row, vald)
 				} else {
@@ -955,7 +941,7 @@ func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (e
 
 		row := []string{v.Id, v.Price, v.Currency_type, posIntToString(v.Payment_method), posIntToString(v.Transfers), posIntToString(v.Transfer_duration), agencyId}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.FareAttributesAddFlds[name][v.Id]; ok {
 				row = append(row, vald)
 			} else {
@@ -1025,7 +1011,7 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 				row = []string{v.Id, r.Route.Id, r.Origin_id, r.Destination_id, r.Contains_id}
 			}
 
-			for _, name := range addFieldsOrder {
+			for _, name := range addFieldsOrder[:] {
 				if vald, ok := feed.FareRulesAddFlds[name][v.Id][r]; ok {
 					row = append(row, vald)
 				} else {
@@ -1095,7 +1081,7 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 				row = []string{v.Id, timeToString(f.Start_time), timeToString(f.End_time), posIntToString(f.Headway_secs), "1"}
 			}
 
-			for _, name := range addFieldsOrder {
+			for _, name := range addFieldsOrder[:] {
 				if vald, ok := feed.FrequenciesAddFlds[name][v.Id][f]; ok {
 					row = append(row, vald)
 				} else {
@@ -1165,7 +1151,7 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 
 		row := []string{t.From_stop.Id, t.To_stop.Id, posIntToString(transferType), posIntToString(t.Min_transfer_time)}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.TransfersAddFlds[name][t]; ok {
 				row = append(row, vald)
 			} else {
@@ -1220,7 +1206,7 @@ func (writer *Writer) writeLevels(path string, feed *gtfsparser.Feed) (err error
 
 	for _, v := range feed.Levels {
 		row := []string{v.Id, strconv.FormatFloat(float64(v.Index), 'f', -1, 32), v.Name}
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.LevelsAddFlds[name][v.Id]; ok {
 				row = append(row, vald)
 			} else {
@@ -1289,7 +1275,7 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 
 		row := []string{v.Id, v.From_stop.Id, v.To_stop.Id, posIntToString(int(v.Mode)), boolToGtfsBool(v.Is_bidirectional, true), length, posIntToString(v.Traversal_time), posNegIntToString(v.Stair_count), maxslope, mwidth, v.Signposted_as, v.Reversed_signposted_as}
 
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.PathwaysAddFlds[name][v.Id]; ok {
 				row = append(row, vald)
 			} else {
@@ -1357,7 +1343,7 @@ func (writer *Writer) writeAttributions(path string, feed *gtfsparser.Feed, attr
 		row := []string{a.Id, "", "", "", a.Organization_name, boolToGtfsBool(a.Is_producer, false), boolToGtfsBool(a.Is_operator, false), boolToGtfsBool(a.Is_authority, false), url, email, a.Phone}
 
 		// additional fields
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.AttributionsAddFlds[name][a]; ok {
 				row = append(row, vald)
 			} else {
@@ -1368,7 +1354,7 @@ func (writer *Writer) writeAttributions(path string, feed *gtfsparser.Feed, attr
 		csvwriter.WriteCsvLine(row)
 	}
 
-	for _, entattr := range attrs {
+	for _, entattr := range attrs[:] {
 		url := ""
 		a := entattr.attr
 		if a.Url != nil {
@@ -1397,7 +1383,7 @@ func (writer *Writer) writeAttributions(path string, feed *gtfsparser.Feed, attr
 		row := []string{a.Id, agencyid, routeid, tripid, a.Organization_name, boolToGtfsBool(a.Is_producer, false), boolToGtfsBool(a.Is_operator, false), boolToGtfsBool(a.Is_authority, false), url, email, a.Phone}
 
 		// additional fields
-		for _, name := range addFieldsOrder {
+		for _, name := range addFieldsOrder[:] {
 			if vald, ok := feed.AttributionsAddFlds[name][a]; ok {
 				row = append(row, vald)
 			} else {
