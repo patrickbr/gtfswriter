@@ -66,12 +66,12 @@ func NewCsvWriter(file io.Writer) CsvWriter {
 func (p *CsvWriter) SetHeader(val []string, required []string) {
 	p.headerUsage = make([]bool, len(val))
 	p.headers = val
-	for i, h := range val {
+	for i, h := range val[:] {
 		p.headersMap[h] = i
 	}
 
-	for _, req := range required {
-		for i, v := range p.headers {
+	for _, req := range required[:] {
+		for i, v := range p.headers[:] {
 			if v == req {
 				p.headerUsage[i] = true
 			}
@@ -81,7 +81,7 @@ func (p *CsvWriter) SetHeader(val []string, required []string) {
 
 func (p *CsvWriter) SetOrder(order []string) {
 	a := 0
-	for _, name := range order {
+	for _, name := range order[:] {
 		// don't write order for headers we don't use!
 		if _, ok := p.headersMap[name]; ok {
 			p.order[name] = a
@@ -109,7 +109,7 @@ func (p *CsvWriter) WriteCsvLineRaw(val []string) {
 
 // HeaderUsage updates the header usage for a single row
 func (p *CsvWriter) HeaderUsage(val []string) {
-	for i, v := range val {
+	for i, v := range val[:] {
 		if len(v) > 0 {
 			p.headerUsage[i] = true
 		}
@@ -134,7 +134,7 @@ func (p *CsvWriter) Flush() {
 
 	p.WriteHeader()
 
-	for _, v := range p.lines {
+	for _, v := range p.lines[:] {
 		p.WriteCsvLineRaw(v)
 	}
 	p.FlushFile()
@@ -164,7 +164,7 @@ func (p *CsvWriter) maskLine(val *[]string) {
 	if len(p.order) > 0 {
 
 		a := make([]string, len(p.order))
-		for i, h := range p.headerUsage {
+		for i, h := range p.headerUsage[:] {
 			if order, ok := p.order[p.headers[i]]; ok {
 				a[order] = (*val)[i]
 			} else if h {
@@ -177,7 +177,7 @@ func (p *CsvWriter) maskLine(val *[]string) {
 	}
 
 	j := 0
-	for i, h := range p.headerUsage {
+	for i, h := range p.headerUsage[:] {
 		if !h {
 			*val = append((*val)[:(i-j)], (*val)[(i-j)+1:]...)
 			j = j + 1
