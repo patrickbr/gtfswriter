@@ -7,10 +7,11 @@
 package gtfswriter
 
 import (
-	"archive/zip"
+	// "archive/zip"
 	"compress/flate"
 	"errors"
 	"fmt"
+	"github.com/klauspost/compress/zip"
 	"github.com/patrickbr/gtfsparser"
 	gtfs "github.com/patrickbr/gtfsparser/gtfs"
 	"io"
