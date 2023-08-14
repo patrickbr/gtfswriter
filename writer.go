@@ -207,7 +207,7 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.AgenciesAddFlds {
+	for k := range feed.AgenciesAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -283,7 +283,7 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.FeedInfosAddFlds {
+	for k := range feed.FeedInfosAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -348,7 +348,7 @@ func (writer *Writer) writeStops(path string, feed *gtfsparser.Feed) (err error)
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.StopsAddFlds {
+	for k := range feed.StopsAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -463,7 +463,7 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.ShapesAddFlds {
+	for k := range feed.ShapesAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -479,19 +479,19 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 	lines := make(shapeLines, len(feed.Shapes))
 	i := 0
 
-	row := make([]string, 5 + len(feed.ShapesAddFlds))
+	row := make([]string, 5+len(feed.ShapesAddFlds))
 
 	for _, v := range feed.Shapes {
 		lines[i] = shapeLine{v}
 
-		i+= 1
+		i += 1
 
 		for _, vp := range v.Points {
 			writer.shapePointLine(v, &vp, row)
 
 			// fill them with dummy values to make sure they count as non-empty
 			for i := 0; i < len(feed.ShapesAddFlds); i++ {
-				row[5 + i] = "-";
+				row[5+i] = "-"
 			}
 			csvwriter.HeaderUsage(row)
 		}
@@ -510,9 +510,9 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 			// additional fields
 			for i, name := range addFieldsOrder {
 				if vald, ok := feed.ShapesAddFlds[name][v.Shape.Id][int(vp.Sequence)]; ok {
-					row[5 + i] = vald;
+					row[5+i] = vald
 				} else {
-					row[5 + i] = "";
+					row[5+i] = ""
 				}
 			}
 
@@ -544,7 +544,7 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]E
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.RoutesAddFlds {
+	for k := range feed.RoutesAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -727,7 +727,7 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.TripsAddFlds {
+	for k := range feed.TripsAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -745,7 +745,7 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 			wa = -1
 		}
 		if t.Attributions != nil {
-			for _, attr := range (*t.Attributions) {
+			for _, attr := range *t.Attributions {
 				*attrs = append(*attrs, EntAttr{attr, nil, nil, t})
 			}
 		}
@@ -875,7 +875,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.StopTimesAddFlds {
+	for k := range feed.StopTimesAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -891,7 +891,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 	lines := make(tripLines, len(feed.Trips))
 	i := 0
 
-	row := make([]string, 12 + len(feed.ShapesAddFlds))
+	row := make([]string, 12+len(feed.ShapesAddFlds))
 
 	for _, v := range feed.Trips {
 		lines[i] = tripLine{v}
@@ -902,7 +902,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 
 			// fill them with dummy values to make sure they count as non-empty
 			for i := 0; i < len(feed.StopTimesAddFlds); i++ {
-				row[12 + i] = "-";
+				row[12+i] = "-"
 			}
 			csvwriter.HeaderUsage(row)
 		}
@@ -922,9 +922,9 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 			// additional fields
 			for i, name := range addFieldsOrder {
 				if vald, ok := feed.StopTimesAddFlds[name][v.Trip.Id][st.Sequence()]; ok {
-					row[12 + i] = vald;
+					row[12+i] = vald
 				} else {
-					row[12 + i] = "";
+					row[12+i] = ""
 				}
 			}
 
@@ -959,7 +959,7 @@ func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (e
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.FareAttributesAddFlds {
+	for k := range feed.FareAttributesAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -1028,7 +1028,7 @@ func (writer *Writer) writeFareAttributeRules(path string, feed *gtfsparser.Feed
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.FareRulesAddFlds {
+	for k := range feed.FareRulesAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -1102,7 +1102,7 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.FrequenciesAddFlds {
+	for k := range feed.FrequenciesAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -1118,7 +1118,7 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 		if v.Frequencies == nil {
 			continue
 		}
-		for _, f := range (*v.Frequencies) {
+		for _, f := range *v.Frequencies {
 			row := make([]string, 0)
 			if !f.Exact_times {
 				row = []string{v.Id, timeToString(f.Start_time), timeToString(f.End_time), posIntToString(f.Headway_secs), ""}
@@ -1164,18 +1164,18 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 		}
 	}()
 
-	header := []string{"from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"}
+	header := []string{"from_stop_id", "to_stop_id", "from_route_id", "to_route_id", "from_trip_id", "to_trip_id", "transfer_type", "min_transfer_time"}
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.TransfersAddFlds {
+	for k := range feed.TransfersAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
 
 	// write header
 	csvwriter.SetHeader(header,
-		[]string{"from_stop_id", "to_stop_id", "transfer_type"})
+		[]string{"transfer_type"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.Transfers)
@@ -1187,7 +1187,33 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 			transferType = -1
 		}
 
-		row := []string{tk.From_stop.Id, tk.To_stop.Id, posIntToString(transferType), posIntToString(tv.Min_transfer_time)}
+		from_sid := ""
+		to_sid := ""
+		from_rid := ""
+		to_rid := ""
+		from_tid := ""
+		to_tid := ""
+
+		if tk.From_stop != nil {
+			from_sid = tk.From_stop.Id
+		}
+		if tk.To_stop != nil {
+			to_sid = tk.To_stop.Id
+		}
+		if tk.From_route != nil {
+			from_rid = tk.From_route.Id
+		}
+		if tk.To_route != nil {
+			to_rid = tk.To_route.Id
+		}
+		if tk.From_trip != nil {
+			from_tid = tk.From_trip.Id
+		}
+		if tk.To_trip != nil {
+			to_tid = tk.To_trip.Id
+		}
+
+		row := []string{from_sid, to_sid, from_rid, to_rid, from_tid, to_tid, posIntToString(transferType), posIntToString(tv.Min_transfer_time)}
 
 		for _, name := range addFieldsOrder {
 			if vald, ok := feed.TransfersAddFlds[name][tk]; ok {
@@ -1230,7 +1256,7 @@ func (writer *Writer) writeLevels(path string, feed *gtfsparser.Feed) (err error
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.LevelsAddFlds {
+	for k := range feed.LevelsAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -1284,7 +1310,7 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.PathwaysAddFlds {
+	for k := range feed.PathwaysAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
@@ -1355,7 +1381,7 @@ func (writer *Writer) writeAttributions(path string, feed *gtfsparser.Feed, attr
 
 	addFieldsOrder := make([]string, 0)
 
-	for k, _ := range feed.AttributionsAddFlds {
+	for k := range feed.AttributionsAddFlds {
 		header = append(header, k)
 		addFieldsOrder = append(addFieldsOrder, k)
 	}
