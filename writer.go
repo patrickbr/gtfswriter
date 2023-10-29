@@ -892,7 +892,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 	lines := make(tripLines, len(feed.Trips))
 	i := 0
 
-	row := make([]string, 12+len(feed.ShapesAddFlds))
+	row := make([]string, 12+len(feed.StopTimesAddFlds))
 
 	for _, v := range feed.Trips {
 		lines[i] = tripLine{v}
