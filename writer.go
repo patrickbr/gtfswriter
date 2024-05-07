@@ -10,17 +10,18 @@ import (
 	// "archive/zip"
 	"compress/flate"
 	"errors"
-	"github.com/klauspost/compress/zip"
-	"github.com/patrickbr/gtfsparser"
-	gtfs "github.com/patrickbr/gtfsparser/gtfs"
 	"io"
 	"math"
 	"os"
 	opath "path"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+
+	"github.com/klauspost/compress/zip"
+	"github.com/patrickbr/gtfsparser"
+	gtfs "github.com/patrickbr/gtfsparser/gtfs"
 )
 
 type EntAttr struct {
@@ -48,79 +49,173 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	writer.buff = make([]byte, 0, 64)
 	var e error
 
+	/*
+	* Distribute writing the different parts across a bunch of goroutines.
+	* Concurrency within writers of the individual files should also be possible, but'd require
+	* more work to implement.
+	 */
+	var wg sync.WaitGroup
+	ec := make(chan error)
+	defer close(ec)
+	var attrMutex sync.Mutex
+
 	// collected route, trip and agency attributions
 	attributions := make([]EntAttr, 0)
 
-	e = writer.writeAgencies(path, feed, &attributions)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		e = writer.writeAgencies(path, feed, &attributions, &attrMutex)
+		if e != nil {
+			ec <- e
+		}
+	}()
 
-	if e == nil {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeFeedInfos(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeStops(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeShapes(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
-		e = writer.writeRoutes(path, feed, &attributions)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// FIXME: Attributions should be a channel, this is race-prone!
+		e = writer.writeRoutes(path, feed, &attributions, &attrMutex)
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeCalendar(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeCalendarDates(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
-		e = writer.writeTrips(path, feed, &attributions)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// FIXME: Attributions should be a channel, this is race-prone!
+		e = writer.writeTrips(path, feed, &attributions, &attrMutex)
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeStopTimes(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeFareAttributes(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeFareAttributeRules(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeFrequencies(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeTransfers(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writeLevels(path, feed)
-	}
-	runtime.GC()
-	if e == nil {
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		e = writer.writePathways(path, feed)
+		if e != nil {
+			ec <- e
+		}
+	}()
+
+	defer wg.Wait()
+
+	// Done without errors?
+	select {
+	case e := <-ec:
+		return e
+	default:
 	}
-	runtime.GC()
+
 	if e == nil {
 		e = writer.writeAttributions(path, feed, attributions)
-	}
-	runtime.GC()
-
-	if e != nil {
-		return e
 	}
 
 	if writer.curFileHandle != nil {
 		writer.curFileHandle.Close()
 	}
+
 	if writer.zipFile != nil {
 		e = writer.zipFile.Close()
 	}
@@ -188,7 +283,7 @@ func (writer *Writer) getFileForWriting(path string, name string) (io.Writer, er
 	return writer.zipFile.Create(name)
 }
 
-func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[]EntAttr) (err error) {
+func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[]EntAttr, attrMutex *sync.Mutex) (err error) {
 	file, e := writer.getFileForWriting(path, "agency.txt")
 
 	if e != nil {
@@ -225,9 +320,11 @@ func (writer *Writer) writeAgencies(path string, feed *gtfsparser.Feed, attrs *[
 			fareurl = v.Fare_url.String()
 		}
 
+		attrMutex.Lock()
 		for _, attr := range v.Attributions {
 			*attrs = append(*attrs, EntAttr{attr, nil, v, nil})
 		}
+		attrMutex.Unlock()
 
 		url := ""
 		if v.Url != nil {
@@ -525,7 +622,7 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 	return e
 }
 
-func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]EntAttr) (err error) {
+func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]EntAttr, attrMutex *sync.Mutex) (err error) {
 	file, e := writer.getFileForWriting(path, "routes.txt")
 
 	if e != nil {
@@ -563,9 +660,11 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]E
 			agency = r.Agency.Id
 		}
 
+		attrMutex.Lock()
 		for _, attr := range r.Attributions {
 			*attrs = append(*attrs, EntAttr{attr, r, nil, nil})
 		}
+		attrMutex.Unlock()
 
 		color := r.Color
 		if color == "FFFFFF" {
@@ -708,7 +807,7 @@ func (writer *Writer) writeCalendarDates(path string, feed *gtfsparser.Feed) (er
 	return e
 }
 
-func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]EntAttr) (err error) {
+func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]EntAttr, attrMutex *sync.Mutex) (err error) {
 	file, e := writer.getFileForWriting(path, "trips.txt")
 
 	if e != nil {
@@ -745,9 +844,11 @@ func (writer *Writer) writeTrips(path string, feed *gtfsparser.Feed, attrs *[]En
 			wa = -1
 		}
 		if t.Attributions != nil {
+			attrMutex.Lock()
 			for _, attr := range *t.Attributions {
 				*attrs = append(*attrs, EntAttr{attr, nil, nil, t})
 			}
+			attrMutex.Unlock()
 		}
 		ba := int(t.Bikes_allowed)
 		if ba == 0 {
