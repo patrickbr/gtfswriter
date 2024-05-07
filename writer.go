@@ -10,7 +10,6 @@ import (
 	// "archive/zip"
 	"compress/flate"
 	"errors"
-	"fmt"
 	"github.com/klauspost/compress/zip"
 	"github.com/patrickbr/gtfsparser"
 	gtfs "github.com/patrickbr/gtfsparser/gtfs"
@@ -1468,16 +1467,37 @@ func (writer *Writer) writeAttributions(path string, feed *gtfsparser.Feed, attr
 	return e
 }
 
+func fmtIntPadded(val int, sb *strings.Builder) {
+	// Left-pad with zeroes so it's at least 2 digits
+	if val < 10 {
+		sb.WriteRune('0')
+	}
+	sb.WriteString(strconv.FormatInt(int64(val), 10))
+}
+
 func dateToString(date gtfs.Date) string {
 	if date.IsEmpty() {
 		// null value
 		return ""
 	}
-	return fmt.Sprintf("%d%02d%02d", date.Year(), date.Month(), date.Day())
+
+	var sb strings.Builder
+	sb.WriteString(strconv.FormatInt(int64(date.Year()), 10))
+	fmtIntPadded(int(date.Month()), &sb)
+	fmtIntPadded(int(date.Day()), &sb)
+	return sb.String()
 }
 
 func timeToString(time gtfs.Time) string {
-	return fmt.Sprintf("%02d:%02d:%02d", time.Hour, time.Minute, time.Second)
+	// Code would be simpler with Sprintf, but also very inefficient.
+	// That's bad, as this is a very hot function (>25% of time was spent here before optimization).
+	var sb strings.Builder
+	fmtIntPadded(int(time.Hour), &sb)
+	sb.WriteRune(':')
+	fmtIntPadded(int(time.Minute), &sb)
+	sb.WriteRune(':')
+	fmtIntPadded(int(time.Second), &sb)
+	return sb.String()
 }
 
 func posIntToString(i int) string {
