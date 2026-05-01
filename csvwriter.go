@@ -110,7 +110,7 @@ func (p *CsvWriter) WriteCsvLineRaw(val []string) {
 // HeaderUsage updates the header usage for a single row
 func (p *CsvWriter) HeaderUsage(val []string) {
 	for i, v := range val {
-		if len(v) > 0 {
+		if i < len(p.headerUsage) && len(v) > 0 {
 			p.headerUsage[i] = true
 		}
 	}

@@ -11,9 +11,6 @@ import (
 	"compress/flate"
 	"errors"
 	"fmt"
-	"github.com/klauspost/compress/zip"
-	"github.com/patrickbr/gtfsparser"
-	gtfs "github.com/patrickbr/gtfsparser/gtfs"
 	"io"
 	"math"
 	"os"
@@ -22,6 +19,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/klauspost/compress/zip"
+	"github.com/patrickbr/gtfsparser"
+	gtfs "github.com/patrickbr/gtfsparser/gtfs"
 )
 
 type EntAttr struct {
@@ -60,91 +61,91 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeStops(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeShapes(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeRoutes(path, feed, &attributions)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeCalendar(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeCalendarDates(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeTrips(path, feed, &attributions)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeStopTimes(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeFareAttributes(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeFareAttributeRules(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeFrequencies(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeTransfers(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeLevels(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writePathways(path, feed)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 	if e == nil {
 		e = writer.writeAttributions(path, feed, attributions)
 	}
 	if !writer.DontGarbageCollect {
 		runtime.GC()
-    }
+	}
 
 	if e != nil {
 		return e
@@ -322,7 +323,7 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 
 	// write header
 	csvwriter.SetHeader(header,
-	[]string{"feed_publisher_name", "feed_publisher_url", "feed_lang"})
+		[]string{"feed_publisher_name", "feed_publisher_url", "feed_lang"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.FeedInfos)
@@ -502,7 +503,7 @@ func (writer *Writer) writeShapes(path string, feed *gtfsparser.Feed) (err error
 
 	// write header
 	csvwriter.SetHeader(header,
-	[]string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence"})
+		[]string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.Shapes)
@@ -583,7 +584,7 @@ func (writer *Writer) writeRoutes(path string, feed *gtfsparser.Feed, attrs *[]E
 
 	// write header
 	csvwriter.SetHeader(header,
-	[]string{"route_long_name", "route_short_name", "route_type", "route_id"})
+		[]string{"route_long_name", "route_short_name", "route_type", "route_id"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.Routes)
@@ -668,7 +669,7 @@ func (writer *Writer) writeCalendar(path string, feed *gtfsparser.Feed) (err err
 
 	// write header
 	csvwriter.SetHeader([]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"},
-	[]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"})
+		[]string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date", "service_id"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.Calendar)
@@ -834,10 +835,10 @@ func (tl tripLines) Len() int      { return len(tl) }
 func (tl tripLines) Swap(i, j int) { tl[i], tl[j] = tl[j], tl[i] }
 func (tl tripLines) Less(i, j int) bool {
 	return tl[i].Trip.Route.Type < tl[j].Trip.Route.Type ||
-	(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name < tl[j].Trip.Route.Long_name) ||
-	(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && *tl[i].Trip.Headsign < *tl[j].Trip.Headsign) ||
-	(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && *tl[i].Trip.Headsign == *tl[j].Trip.Headsign && tl[i].Trip.Route.Id < tl[j].Trip.Route.Id) ||
-	(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && *tl[i].Trip.Headsign == *tl[j].Trip.Headsign && tl[i].Trip.Route.Id == tl[j].Trip.Route.Id && tl[i].Trip.Id < tl[j].Trip.Id)
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name < tl[j].Trip.Route.Long_name) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && *tl[i].Trip.Headsign < *tl[j].Trip.Headsign) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && *tl[i].Trip.Headsign == *tl[j].Trip.Headsign && tl[i].Trip.Route.Id < tl[j].Trip.Route.Id) ||
+		(tl[i].Trip.Route.Type == tl[j].Trip.Route.Type && tl[i].Trip.Route.Long_name == tl[j].Trip.Route.Long_name && *tl[i].Trip.Headsign == *tl[j].Trip.Headsign && tl[i].Trip.Route.Id == tl[j].Trip.Route.Id && tl[i].Trip.Id < tl[j].Trip.Id)
 }
 
 func (writer *Writer) stopTimeLine(v *gtfs.Trip, st *gtfs.StopTime, row []string) {
@@ -877,12 +878,9 @@ func (writer *Writer) stopTimeLine(v *gtfs.Trip, st *gtfs.StopTime, row []string
 		row[1] = ""
 		row[2] = ""
 	} else {
-		if st.Timepoint() {
-			row[1] = timeToString(st.Arrival_time())
-			row[2] = timeToString(st.Departure_time())
-		} else {
-			row[1] = timeToString(st.Arrival_time())
-			row[2] = timeToString(st.Departure_time())
+		row[1] = timeToString(st.Arrival_time())
+		row[2] = timeToString(st.Departure_time())
+		if !st.Timepoint() {
 			row[11] = "0"
 		}
 	}
@@ -914,7 +912,7 @@ func (writer *Writer) writeStopTimes(path string, feed *gtfsparser.Feed) (err er
 
 	// write header
 	csvwriter.SetHeader(header,
-	[]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"})
+		[]string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.StopTimes)
@@ -998,7 +996,7 @@ func (writer *Writer) writeFareAttributes(path string, feed *gtfsparser.Feed) (e
 
 	// write header
 	csvwriter.SetHeader(header,
-	[]string{"fare_id", "price", "currency_type", "payment_method", "transfers"})
+		[]string{"fare_id", "price", "currency_type", "payment_method", "transfers"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.FareAttributes)
@@ -1207,7 +1205,7 @@ func (writer *Writer) writeTransfers(path string, feed *gtfsparser.Feed) (err er
 
 	// write header
 	csvwriter.SetHeader(header,
-	[]string{"transfer_type"})
+		[]string{"transfer_type"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.Transfers)
@@ -1294,7 +1292,7 @@ func (writer *Writer) writeLevels(path string, feed *gtfsparser.Feed) (err error
 	}
 
 	// write header
-	csvwriter.SetHeader(header, []string{"fare_id", "level_index"})
+	csvwriter.SetHeader(header, []string{"level_id", "level_index"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.Levels)
@@ -1349,7 +1347,7 @@ func (writer *Writer) writePathways(path string, feed *gtfsparser.Feed) (err err
 
 	// write header
 	csvwriter.SetHeader(header,
-	[]string{"pathway_id", "from_stop_id", "to_stop_id", "pathway_mode", "is_bidirectional"})
+		[]string{"pathway_id", "from_stop_id", "to_stop_id", "pathway_mode", "is_bidirectional"})
 
 	if writer.KeepColOrder {
 		csvwriter.SetOrder(feed.ColOrders.Pathways)
