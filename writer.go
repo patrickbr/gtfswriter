@@ -344,7 +344,7 @@ func (writer *Writer) writeFeedInfos(path string, feed *gtfsparser.Feed) (err er
 			contactemail = v.Contact_email.Address
 		}
 
-		row := []string{strings.Replace(v.Publisher_name, "\n", " ", -1), puburl, v.Lang, dateToString(v.Start_date), dateToString(v.End_date), strings.Replace(v.Version, "\n", " ", -1), contactemail, contacturl}
+		row := []string{strings.Replace(v.Publisher_name, "\n", " ", -1), puburl, v.Lang.GetLangString(), dateToString(v.Start_date), dateToString(v.End_date), strings.Replace(v.Version, "\n", " ", -1), contactemail, contacturl}
 
 		for _, name := range addFieldsOrder {
 			if vald, ok := feed.FeedInfosAddFlds[name][v]; ok {
