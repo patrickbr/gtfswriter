@@ -44,6 +44,7 @@ type CsvWriter struct {
 	headerUsageCount int
 	lines            Lines
 	order            map[string]int
+	maskBuf          []string
 }
 
 // NewCsvWriter returns a new CsvWriter instance
@@ -162,7 +163,15 @@ func (p *CsvWriter) FlushFile() {
 
 func (p *CsvWriter) maskLine(val *[]string) {
 	if len(p.order) > 0 {
-		a := make([]string, len(p.order))
+		// re-use the mask buffer to avoid an allocation per line
+		if cap(p.maskBuf) < len(p.order) {
+			p.maskBuf = make([]string, len(p.order))
+		}
+		a := p.maskBuf[:len(p.order)]
+		for i := range a {
+			a[i] = ""
+		}
+
 		for i, h := range p.headerUsage {
 			if order, ok := p.order[p.headers[i]]; ok {
 				a[order] = (*val)[i]
@@ -171,7 +180,8 @@ func (p *CsvWriter) maskLine(val *[]string) {
 			}
 		}
 
-		*val = append([]string(nil), a...)
+		p.maskBuf = a
+		*val = a
 		return
 	}
 

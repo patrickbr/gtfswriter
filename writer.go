@@ -15,7 +15,6 @@ import (
 	"math"
 	"os"
 	opath "path"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,13 +41,15 @@ type Writer struct {
 	Sorted              bool
 	ExplicitCalendar    bool
 	KeepColOrder        bool
-	DontGarbageCollect  bool
+	DontGarbageCollect  bool // deprecated
 	buff                []byte
+	timeCache           map[gtfs.Time]string
 }
 
 // Write a single GTFS feed to a system path, either a folder or a ZIP file
 func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	writer.buff = make([]byte, 0, 64)
+	writer.timeCache = make(map[gtfs.Time]string)
 	var e error
 
 	// collected route, trip and agency attributions
@@ -59,92 +60,47 @@ func (writer *Writer) Write(feed *gtfsparser.Feed, path string) error {
 	if e == nil {
 		e = writer.writeFeedInfos(path, feed)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writeStops(path, feed)
-	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
 	}
 	if e == nil {
 		e = writer.writeShapes(path, feed)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writeRoutes(path, feed, &attributions)
-	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
 	}
 	if e == nil {
 		e = writer.writeCalendar(path, feed)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writeCalendarDates(path, feed)
-	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
 	}
 	if e == nil {
 		e = writer.writeTrips(path, feed, &attributions)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writeStopTimes(path, feed)
-	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
 	}
 	if e == nil {
 		e = writer.writeFareAttributes(path, feed)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writeFareAttributeRules(path, feed)
-	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
 	}
 	if e == nil {
 		e = writer.writeFrequencies(path, feed)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writeTransfers(path, feed)
-	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
 	}
 	if e == nil {
 		e = writer.writeLevels(path, feed)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writePathways(path, feed)
 	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
-	}
 	if e == nil {
 		e = writer.writeAttributions(path, feed, attributions)
-	}
-	if !writer.DontGarbageCollect {
-		runtime.GC()
 	}
 
 	if e != nil {
@@ -878,8 +834,8 @@ func (writer *Writer) stopTimeLine(v *gtfs.Trip, st *gtfs.StopTime, row []string
 		row[1] = ""
 		row[2] = ""
 	} else {
-		row[1] = timeToString(st.Arrival_time())
-		row[2] = timeToString(st.Departure_time())
+		row[1] = writer.timeToString(st.Arrival_time())
+		row[2] = writer.timeToString(st.Departure_time())
 		if !st.Timepoint() {
 			row[11] = "0"
 		}
@@ -1151,9 +1107,9 @@ func (writer *Writer) writeFrequencies(path string, feed *gtfsparser.Feed) (err 
 		for _, f := range *v.Frequencies {
 			row := make([]string, 0)
 			if !f.Exact_times {
-				row = []string{v.Id, timeToString(f.Start_time), timeToString(f.End_time), posIntToString(f.Headway_secs), ""}
+				row = []string{v.Id, writer.timeToString(f.Start_time), writer.timeToString(f.End_time), posIntToString(f.Headway_secs), ""}
 			} else {
-				row = []string{v.Id, timeToString(f.Start_time), timeToString(f.End_time), posIntToString(f.Headway_secs), "1"}
+				row = []string{v.Id, writer.timeToString(f.Start_time), writer.timeToString(f.End_time), posIntToString(f.Headway_secs), "1"}
 			}
 
 			for _, name := range addFieldsOrder {
@@ -1505,8 +1461,34 @@ func dateToString(date gtfs.Date) string {
 	return fmt.Sprintf("%d%02d%02d", date.Year(), date.Month(), date.Day())
 }
 
-func timeToString(time gtfs.Time) string {
-	return fmt.Sprintf("%02d:%02d:%02d", time.Hour, time.Minute, time.Second)
+func appendPad2(b []byte, v int) []byte {
+	if v < 0 {
+		return strconv.AppendInt(b, int64(v), 10)
+	}
+	if v < 10 {
+		return append(b, '0', byte('0'+v))
+	}
+	if v < 100 {
+		return append(b, byte('0'+v/10), byte('0'+v%10))
+	}
+	return strconv.AppendInt(b, int64(v), 10)
+}
+
+func (writer *Writer) timeToString(t gtfs.Time) string {
+	if s, ok := writer.timeCache[t]; ok {
+		return s
+	}
+
+	writer.buff = writer.buff[:0]
+	writer.buff = appendPad2(writer.buff, int(t.Hour))
+	writer.buff = append(writer.buff, ':')
+	writer.buff = appendPad2(writer.buff, int(t.Minute))
+	writer.buff = append(writer.buff, ':')
+	writer.buff = appendPad2(writer.buff, int(t.Second))
+
+	s := string(writer.buff)
+	writer.timeCache[t] = s
+	return s
 }
 
 func posIntToString(i int) string {
